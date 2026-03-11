@@ -16,6 +16,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - dreamlink-network
 
   backend:
     build:
@@ -50,6 +52,31 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - dreamlink-network
+
+  ai-matcher:
+    build:
+      context: ./matcher
+      dockerfile: Dockerfile
+    container_name: dreamlink-ai-matcher
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dreamlink:change_me@postgres:5432/dreamlink
+      BACKEND_BASE_URL: http://dreamlink-backend:8080
+    ports:
+      - "8000:8000"
+    networks:
+      - dreamlink-network
 
 volumes:
   dreamlink-postgres-data:
+
+networks:
+  dreamlink-network:
+    name: dreamlink-network
