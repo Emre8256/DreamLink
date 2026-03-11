@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: dreamlink-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dreamlink
+      POSTGRES_USER: dreamlink
+      POSTGRES_PASSWORD: change_me
+    ports:
+      - "5432:5432"
+    volumes:
+      - dreamlink-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend/Dreamlink
+      dockerfile: Dockerfile
+    container_name: dreamlink-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/dreamlink
+      DB_USERNAME: dreamlink
+      DB_PASSWORD: change_me
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      PREMIUM_SMOKE_ENABLED: ${PREMIUM_SMOKE_ENABLED:-false}
+      BOOST_STATE_MAX_AGE_HOURS: ${BOOST_STATE_MAX_AGE_HOURS:-0}
+      BOOST_STATE_SMOKE_BACKDATE_HOURS: ${BOOST_STATE_SMOKE_BACKDATE_HOURS:-0}
+      REWIND_COOLDOWN_SECONDS: ${REWIND_COOLDOWN_SECONDS:-0}
+      RETENTION_DAILY_PICKS_ENABLED: ${RETENTION_DAILY_PICKS_ENABLED:-false}
+      RETENTION_DAILY_PICKS_RESET_GUARD_HOURS: ${RETENTION_DAILY_PICKS_RESET_GUARD_HOURS:-0}
+      RETENTION_NOTIFICATIONS_ENABLED: ${RETENTION_NOTIFICATIONS_ENABLED:-false}
+      RETENTION_NOTIFICATIONS_SEND_BOOST: ${RETENTION_NOTIFICATIONS_SEND_BOOST:-false}
+      RETENTION_NOTIFICATIONS_SEND_REWIND: ${RETENTION_NOTIFICATIONS_SEND_REWIND:-false}
+      MATCHER_OBSERVABILITY_ENABLED: ${MATCHER_OBSERVABILITY_ENABLED:-false}
+      LOGGING_LEVEL_ROOT: ${LOGGING_LEVEL_ROOT:-WARN}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/dreams > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dreamlink-postgres-data:
