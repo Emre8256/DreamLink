@@ -7,6 +7,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,14 @@ from .database import AsyncSessionLocal
 from .models import Dream, User
 
 app = FastAPI(title="Dream-Link AI Matcher", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8082", "http://127.0.0.1:8082"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 PROCESS_DREAM_RETRY_COUNT = int(os.getenv("PROCESS_DREAM_RETRY_COUNT", "6"))
 PROCESS_DREAM_RETRY_DELAY_SECONDS = float(os.getenv("PROCESS_DREAM_RETRY_DELAY_SECONDS", "0.35"))

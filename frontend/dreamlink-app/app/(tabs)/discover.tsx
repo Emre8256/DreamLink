@@ -83,7 +83,7 @@ const DiscoverCard = ({
   onLike: (dreamId: string) => void;
   onSkip: (item: DiscoverCardResponse) => void;
 }) => (
-  <View style={styles.card}>
+  <View style={[styles.card, item.isHot && styles.cardHotGlow]}>
     {/* User Row */}
     <View style={styles.cardUserRow}>
       <Avatar url={item.matchedUserAvatarUrl} name={item.matchedUserNickname} size={46} />
@@ -103,6 +103,12 @@ const DiscoverCard = ({
 
     {/* Dream Content */}
     <Text style={styles.cardTitle}>{item.matchedDreamTitle}</Text>
+    {item.isHot && (
+      <View style={styles.legendaryBadge}>
+        <Ionicons name="sparkles" size={12} color="#8E5B00" />
+        <Text style={styles.legendaryText}>Efsanevi Uyum</Text>
+      </View>
+    )}
     <Text style={styles.cardDesc} numberOfLines={3}>{item.matchedDreamDescription}</Text>
 
     {item.matchCount > 1 && (
@@ -378,6 +384,19 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 30, fontWeight: '800', color: '#1A1A2E', letterSpacing: -0.5 },
   headerSub: { fontSize: 14, color: '#7E6BFF', fontWeight: '600', marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rewindBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E6E6FA',
+  },
+  rewindBtnDisabled: { opacity: 0.6 },
+  boostBtnDisabled: { opacity: 0.7 },
   countBadge: {
     width: 36,
     height: 36,
@@ -407,23 +426,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
     marginBottom: 12,
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  rewindBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E6E6FA',
-  },
-  rewindBtnDisabled: {
-    opacity: 0.6,
-  },
-  boostBtnDisabled: {
-    opacity: 0.7,
-  },
     shadowColor: '#7E6BFF',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.07,
@@ -461,10 +463,33 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 3,
   },
+  cardHotGlow: {
+    borderWidth: 1.5,
+    borderColor: '#F6C453',
+    shadowColor: '#F6C453',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 6,
+  },
   cardUserRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   cardName: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
   cardTime: { fontSize: 12, color: '#B0B3C8', marginTop: 2 },
   cardTitle: { fontSize: 17, fontWeight: '800', color: '#1A1A2E', marginBottom: 6, lineHeight: 23 },
+  legendaryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: '#FFE9B6',
+    borderWidth: 1,
+    borderColor: '#F6C453',
+  },
+  legendaryText: { fontSize: 12, fontWeight: '800', color: '#8E5B00' },
   cardDesc: { fontSize: 14, color: '#5E5E72', lineHeight: 21 },
 
   scoreBadge: {

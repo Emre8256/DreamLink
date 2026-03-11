@@ -30,6 +30,7 @@ public class DreamService {
     private final UserRepository userRepository;
 
     private final MatchService matchService;
+    private final AiMatcherClientService aiMatcherClientService;
     private final com.example.dreamlink.Dreamlink.repository.DreamMatchRepository matchRepository;
 
     private User getCurrentUser() {
@@ -74,6 +75,9 @@ public class DreamService {
         Dream savedDream = dreamRepository.save(dream);
 
         dreamRepository.flush();
+
+        // Python matcher'a embedding isleme talebini asenkron gonder.
+        aiMatcherClientService.triggerProcessDreamAsync(savedDream.getId());
 
         // Match hesaplaması arka planda — hata olursa rüya kaydını etkilemesin
         try {

@@ -22,6 +22,7 @@ class MatchServiceTest {
         RetentionEventPublisher retentionEventPublisher = Mockito.mock(RetentionEventPublisher.class);
         AnalyticsEventService analyticsEventService = Mockito.mock(AnalyticsEventService.class);
         MatcherObservabilityService matcherObservabilityService = Mockito.mock(MatcherObservabilityService.class);
+        AiMatcherDiscoverService aiMatcherDiscoverService = Mockito.mock(AiMatcherDiscoverService.class);
 
         return new MatchService(
                 matchRepository,
@@ -32,7 +33,8 @@ class MatchServiceTest {
                 dailyPicksResetService,
                 retentionEventPublisher,
                 analyticsEventService,
-                matcherObservabilityService
+                matcherObservabilityService,
+                aiMatcherDiscoverService
         );
     }
 

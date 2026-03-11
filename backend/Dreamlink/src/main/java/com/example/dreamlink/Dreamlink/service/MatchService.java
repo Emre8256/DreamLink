@@ -8,7 +8,6 @@ import com.example.dreamlink.Dreamlink.enums.MatchPeriod;
 import com.example.dreamlink.Dreamlink.repository.DreamMatchRepository;
 import com.example.dreamlink.Dreamlink.repository.DreamRepository;
 import com.example.dreamlink.Dreamlink.repository.UserRepository;
-import com.example.dreamlink.Dreamlink.service.PremiumGateService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -48,6 +48,7 @@ public class MatchService {
     private final RetentionEventPublisher retentionEventPublisher;
     private final AnalyticsEventService analyticsEventService;
     private final MatcherObservabilityService matcherObservabilityService;
+    private final AiMatcherDiscoverService aiMatcherDiscoverService;
 
     @Value("${matcher.timeout-ms:200}")
     private long matcherTimeoutMs;
@@ -118,6 +119,16 @@ public class MatchService {
     @Transactional(readOnly = true)
     public List<DiscoverCardResponse> getDiscoverFeed() {
         User user = getCurrentUser();
+        try {
+            return aiMatcherDiscoverService.fetchDiscoverFeed(user.getId(), 30);
+        } catch (RestClientException ex) {
+            logger.warn("Falling back to local discover matcher for user={} due to AI matcher error", user.getId());
+            return getDiscoverFeedLocal(user);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    private List<DiscoverCardResponse> getDiscoverFeedLocal(User user) {
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
 
         List<DreamMatch> rawMatches = matchRepository.findDiscoverMatches(user.getId(), sevenDaysAgo);

@@ -3,7 +3,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8081/api';
 
 if (!BASE_URL) {
   throw new Error(
@@ -311,7 +311,8 @@ export const setUnauthorizedCallback = (callback: () => void) => {
 };
 
 async function fetchWithAuth(url: string, options?: RequestInit): Promise<Response> {
-  const response = await fetch(url, options);
+  const normalizedUrl = url.replace('/api/api/', '/api/');
+  const response = await fetch(normalizedUrl, options);
   if (response.status === 401 && onUnauthorized && !url.includes('/api/auth/')) {
     console.log('API Request returned 401! Triggering unauthorized callback.');
     onUnauthorized();
