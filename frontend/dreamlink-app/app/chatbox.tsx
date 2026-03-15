@@ -33,6 +33,7 @@ import {
   MessageResponse,
   UserProfileResponse
 } from '../services/api';
+import wsService from '../services/websocket';
 
 const showAlert = (title: string, message: string) => {
   if (Platform.OS === 'web') window.alert(`${title}\n${message}`);
@@ -187,20 +188,36 @@ export default function ChatboxScreen() {
     }
   }, [conversationId]);
 
+  // WebSocket: gerçek zamanlı mesaj alma
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      () => setIsKeyboardOpen(true)
-    );
-    const keyboardDidHideListener = Keyboard.addListener(
-      'keyboardDidHide',
-      () => setIsKeyboardOpen(false)
-    );
+    if (!conversationId || !currentUser) return;
+
+    const destination = `/topic/chat/${conversationId}`;
+
+    wsService.subscribe(destination, (payload: MessageResponse) => {
+      // Kendi gönderdiğimiz mesajı duplicate gösterme
+      // (optimistic UI zaten ekledi, sadece karşı tarafın mesajını göster)
+      if (payload.senderId === currentUser.id) return;
+
+      const incoming: IMessage = {
+        _id: payload.id,
+        text: payload.content,
+        createdAt: new Date(payload.sentAt),
+        user: { _id: payload.senderId },
+      };
+      setMessages(prev => GiftedChat.append(prev, [incoming]));
+    });
 
     return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
+      wsService.unsubscribe(destination);
     };
+  }, [conversationId, currentUser]);
+
+  // Klavye aç/kapat takibi
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardOpen(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardOpen(false));
+    return () => { show.remove(); hide.remove(); };
   }, []);
 
   const onSend = useCallback(async () => {

@@ -136,6 +136,7 @@ export interface DreamResponse {
   title: string;
   description: string;
   theme: DreamTheme;
+  authorId: string;
   nickname: string;
   avatarUrl: string | null;
   likeCount: number;

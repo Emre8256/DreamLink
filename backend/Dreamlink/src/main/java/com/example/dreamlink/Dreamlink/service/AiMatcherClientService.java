@@ -40,7 +40,8 @@ public class AiMatcherClientService {
             normalizedBaseUrl = normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1);
         }
         String url = normalizedBaseUrl + "/interpret-dream";
-        log.debug("Calling AI matcher interpret endpoint: {}", url);
+        System.out.println("[AI-MATCHER] interpret-dream isteği gönderiliyor: " + url
+                + " | persona=" + persona + " | zodiacSign=" + zodiacSign);
         try {
             MatcherInterpretResponse response = restTemplate.postForObject(
                     url,
@@ -51,12 +52,16 @@ public class AiMatcherClientService {
                     MatcherInterpretResponse.class);
 
             if (response == null || response.content() == null || response.content().isBlank()) {
+                System.out.println("[AI-MATCHER] Python yanıt döndü ama content boş/null!");
                 throw new ResponseStatusException(SERVICE_UNAVAILABLE, "AI yorumu üretilemedi");
             }
+            System.out.println("[AI-MATCHER] Başarılı yanıt alındı, content uzunluğu: " + response.content().length());
             return response.content();
         } catch (RestClientException ex) {
-            log.warn("AI matcher interpret-dream failed for persona={}: {}", persona, ex.getMessage());
-            throw new ResponseStatusException(SERVICE_UNAVAILABLE, "AI yorum servisine ulasilamadi");
+            System.out.println("[AI-MATCHER] RestClientException: " + ex.getMessage());
+            ex.printStackTrace();
+            throw new ResponseStatusException(SERVICE_UNAVAILABLE,
+                    "AI yorum servisine ulasilamadi: " + ex.getMessage());
         }
     }
 

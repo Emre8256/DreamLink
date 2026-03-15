@@ -71,10 +71,12 @@ public class User implements UserDetails {
     // --- İLİŞKİLER ---
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<Dream> dreams = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<Comment> comments = new ArrayList<>();
 
     /**
@@ -95,26 +97,32 @@ public class User implements UserDetails {
 
     @OneToMany(mappedBy = "recipient", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<Notification> notifications = new ArrayList<>();
 
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
     @ToString.Exclude
+    @Builder.Default
     private List<Message> sentMessages = new ArrayList<>();
 
     @OneToMany(mappedBy = "user1")
     @ToString.Exclude
+    @Builder.Default
     private List<Conversation> conversationsAsUser1 = new ArrayList<>();
 
     @OneToMany(mappedBy = "user2")
     @ToString.Exclude
+    @Builder.Default
     private List<Conversation> conversationsAsUser2 = new ArrayList<>();
 
     @OneToMany(mappedBy = "following", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<Follow> followers = new ArrayList<>();
 
     @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<Follow> following = new ArrayList<>();
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

@@ -11,6 +11,7 @@ public record DreamResponse(
                 String title,
                 String description,
                 DreamThemes theme,
+                UUID authorId,
                 String nickname,
                 String avatarUrl,
                 int likeCount,

@@ -1,5 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useState, useEffect, useCallback } from 'react';
+import wsService from '../../services/websocket';
+import { useAppStore } from '../../store/useAppStore';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -554,16 +556,44 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [myLatestDream, setMyLatestDream] = useState<DreamResponse | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const setUnreadDreams = useAppStore(state => state.setUnreadDreams);
 
   useFocusEffect(
     useCallback(() => {
       checkMyLatestDream();
-    }, [])
+      // Home ekranına odaklanıldığında rüya bildirimini temizle
+      setUnreadDreams(false);
+    }, [setUnreadDreams])
   );
 
   useEffect(() => {
     loadDreams();
+    // Mevcut kullanıcıyı al (WS filtrelemesi için)
+    getMyProfile().then(p => setCurrentUserId(p.id)).catch(() => {});
   }, []);
+
+  // Gerçek zamanlı feed: /topic/dream-feed kanalına abone ol
+  useEffect(() => {
+    wsService.connect();
+    const handler = (newDream: DreamResponse) => {
+      setDreams(prev => {
+        // Kendi rüyamız zaten handleDreamShared ile eklendi — tekrar ekleme
+        // currentUserId null ise (henüz yüklenmedi) sadece ID duplicate kontrolü yap
+        if (currentUserId && newDream.authorId === currentUserId) return prev;
+        // Duplicate ID kontrolü
+        if (prev.some(d => d.id === newDream.id)) return prev;
+        
+        // Başka birinden yeni rüya geldiğinde bidirim noktasını göster
+        setUnreadDreams(true);
+        
+        return [newDream, ...prev]; // En üste ekle
+      });
+    };
+    wsService.subscribe('/topic/dream-feed', handler);
+    return () => wsService.unsubscribe('/topic/dream-feed');
+  }, [currentUserId, setUnreadDreams]);
 
   const checkMyLatestDream = async () => {
     try {
@@ -611,7 +641,11 @@ export default function HomeScreen() {
   const handleDreamShared = (newDream: DreamResponse) => {
     setMyLatestDream(newDream);
     if (newDream.visibility === 'PUBLIC') {
-      setDreams(prev => [newDream, ...prev]);
+      // Duplicate guard: WebSocket'ten önce geldiyse zaten burada ekliyoruz
+      setDreams(prev => {
+        if (prev.some(d => d.id === newDream.id)) return prev;
+        return [newDream, ...prev];
+      });
     }
   };
 
@@ -680,6 +714,7 @@ export default function HomeScreen() {
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          extraData={dreams}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#7E6BFF']} />}
           ListEmptyComponent={
             <View style={[styles.emptyContainer, { zIndex: -1, elevation: -1 }]}>

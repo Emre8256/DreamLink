@@ -10,6 +10,7 @@ import com.example.dreamlink.Dreamlink.repository.ConversationRepository;
 import com.example.dreamlink.Dreamlink.repository.MessageRepository;
 import com.example.dreamlink.Dreamlink.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,14 +26,16 @@ public class ChatService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    private User getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email).orElseThrow();
+    private java.util.Optional<User> getCurrentUser() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) return java.util.Optional.empty();
+        return userRepository.findByEmail(auth.getName());
     }
 
     public List<ConversationResponse> getMyConversations() {
-        User user = getCurrentUser();
+        User user = getCurrentUser().orElseThrow(() -> new RuntimeException("Yetkisiz erişim: Kullanıcı bulunamadı"));
         List<Conversation> conversations = conversationRepository.findMyConversations(user.getId());
 
         return conversations.stream().map(c -> {
@@ -57,7 +60,7 @@ public class ChatService {
     public List<MessageResponse> getMessages(UUID conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new RuntimeException("Sohbet bulunamadı"));
-        User currentUser = getCurrentUser();
+        User currentUser = getCurrentUser().orElseThrow(() -> new RuntimeException("Yetkisiz erişim: Kullanıcı bulunamadı"));
         if (!conversation.getUser1().getId().equals(currentUser.getId())
                 && !conversation.getUser2().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Bu sohbete erişim yetkiniz yok");
@@ -75,7 +78,7 @@ public class ChatService {
 
     @Transactional
     public MessageResponse sendMessage(UUID conversationId, String content) {
-        User sender = getCurrentUser();
+        User sender = getCurrentUser().orElseThrow(() -> new RuntimeException("Yetkisiz erişim: Kullanıcı bulunamadı"));
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new RuntimeException("Sohbet bulunamadı"));
 
@@ -97,19 +100,31 @@ public class ChatService {
         conversation.setLastMessageAt(LocalDateTime.now());
         conversationRepository.save(conversation);
 
-        return new MessageResponse(
+        MessageResponse response = new MessageResponse(
                 savedMessage.getId(),
                 savedMessage.getSender().getId(),
                 savedMessage.getContent(),
                 savedMessage.getSentAt(),
                 savedMessage.isRead());
+
+        // Gerçek zamanlı: Sohbete abone tüm kullanıcılara broadcast
+        String topic = "/topic/chat/" + conversationId;
+        messagingTemplate.convertAndSend(topic, response);
+        System.out.println("[WS] Mesaj broadcast edildi: " + topic);
+
+        // Kullanıcıların kişisel kuyruğuna da (mesajlar listesi için) gönder
+        User otherUser = conversation.getUser1().getId().equals(sender.getId()) ? conversation.getUser2() : conversation.getUser1();
+        messagingTemplate.convertAndSendToUser(otherUser.getEmail(), "/queue/messages", response);
+        messagingTemplate.convertAndSendToUser(sender.getEmail(), "/queue/messages", response);
+
+        return response;
     }
 
     @Transactional
     public void deleteConversation(UUID conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new RuntimeException("Sohbet bulunamadı"));
-        User currentUser = getCurrentUser();
+        User currentUser = getCurrentUser().orElseThrow(() -> new RuntimeException("Yetkisiz erişim: Kullanıcı bulunamadı"));
 
         // Check ownership
         if (!conversation.getUser1().getId().equals(currentUser.getId())

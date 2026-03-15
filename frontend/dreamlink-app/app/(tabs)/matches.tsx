@@ -1,6 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router, useFocusEffect } from 'expo-router';
 import React, { useState, useEffect, useCallback } from 'react';
+import wsService from '../../services/websocket';
+import { useAppStore } from '../../store/useAppStore';
 import {
   ActivityIndicator,
   Alert,
@@ -23,7 +26,7 @@ import {
   formatRelativeTime,
   getPremiumCtaCopy,
 } from '../../services/api';
-import { router } from 'expo-router';
+// router import moved to top
 
 type Tab = 'likedMe' | 'myLikes' | 'mutual';
 
@@ -194,7 +197,30 @@ export default function MatchesScreen() {
     }
   }, []);
 
+  const setUnreadMatches = useAppStore(state => state.setUnreadMatches);
+
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAll();
+      // Sayfaya odaklanıldığında bildirimi temizle
+      setUnreadMatches(false);
+    }, [loadAll, setUnreadMatches])
+  );
+
+  // WebSocket: gerçek zamanlı match bildirimi
+  useEffect(() => {
+    wsService.connect();
+    const handler = (match: any) => {
+      useAppStore.getState().addMatch(match);
+      loadAll(); // listeyi de tazele
+      // Bildirim noktasını göster
+      setUnreadMatches(true);
+    };
+    wsService.subscribe('/user/queue/matches', handler);
+    return () => wsService.unsubscribe('/user/queue/matches');
+  }, [loadAll, setUnreadMatches]);
 
   const tabs: { id: Tab; label: string; icon: string; count?: number; locked?: boolean }[] = [
     { id: 'likedMe', label: 'Beni Beğenenler', icon: 'heart', count: likedMeLocked ? undefined : likedMe.length, locked: likedMeLocked },

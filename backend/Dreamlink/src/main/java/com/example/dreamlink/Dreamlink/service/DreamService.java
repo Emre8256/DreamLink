@@ -13,6 +13,7 @@ import com.example.dreamlink.Dreamlink.repository.DreamRepository;
 import com.example.dreamlink.Dreamlink.repository.TagRepository;
 import com.example.dreamlink.Dreamlink.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,10 +38,10 @@ public class DreamService {
     private final TagRepository tagRepository;
     private final UserRepository userRepository;
     private final DreamInterpretationRepository dreamInterpretationRepository;
-
     private final MatchService matchService;
     private final AiMatcherClientService aiMatcherClientService;
     private final com.example.dreamlink.Dreamlink.repository.DreamMatchRepository matchRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -82,20 +83,29 @@ public class DreamService {
                 .build();
 
         Dream savedDream = dreamRepository.save(dream);
-
         dreamRepository.flush();
 
         // Python matcher'a embedding isleme talebini asenkron gonder.
         aiMatcherClientService.triggerProcessDreamAsync(savedDream.getId());
 
-        // Match hesaplaması arka planda — hata olursa rüya kaydını etkilemesin
+        // Match hesaplaması arka planda
         try {
             matchService.findMatchesForDream(savedDream);
         } catch (Exception e) {
-            System.err.println("[MatchService] Eşleşme hesaplaması başarısız (rüya kaydedildi): " + e.getMessage());
+            System.err.println("[MatchService] Eşleşme hesaplaması başarısız: " + e.getMessage());
         }
 
-        return mapToResponse(savedDream);
+        DreamResponse response = mapToResponse(savedDream);
+
+        // Gerçek zamanlı feed: tüm bağlı kullanıcılara yayınla
+        try {
+            messagingTemplate.convertAndSend("/topic/dream-feed", response);
+            System.out.println("[WS] Yeni rüya broadcast: /topic/dream-feed");
+        } catch (Exception ex) {
+            System.err.println("[WS] Dream broadcast hatası: " + ex.getMessage());
+        }
+
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -309,6 +319,7 @@ public class DreamService {
                 dream.getTitle(),
                 dream.getDescription(),
                 dream.getTheme(),
+                dream.getUser().getId(),
                 dream.getUser().getNickname(),
                 dream.getUser().getAvatarUrl(),
                 dream.getLikes().size(),

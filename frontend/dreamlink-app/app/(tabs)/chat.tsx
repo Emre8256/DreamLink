@@ -2,6 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useState, useEffect, useCallback } from 'react';
+import wsService from '../../services/websocket';
+import { useAppStore } from '../../store/useAppStore';
+// chat.tsx
 import {
   ActivityIndicator,
   FlatList,
@@ -145,12 +148,33 @@ export default function ChatScreen() {
     }
   }, []);
 
+  const setUnreadMessages = useAppStore(state => state.setUnreadMessages);
+
+  // WebSocket ile yeni mesaj geldiğinde listeyi yenile
+  useEffect(() => {
+    wsService.connect();
+    const handler = (msg: any) => {
+      // msg.chatId ve msg içeriği backend ile uyumlu olmalı
+      if (msg && msg.chatId) {
+        useAppStore.getState().addMessage(msg.chatId, msg);
+        // Listeyi anlık yenile (son mesajın güncellenmesi için)
+        load();
+        // Bildirim noktasını göster
+        setUnreadMessages(true);
+      }
+    };
+    wsService.subscribe('/user/queue/messages', handler);
+    return () => wsService.unsubscribe('/user/queue/messages');
+  }, [load, setUnreadMessages]);
+
   useEffect(() => { load(); }, [load]);
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+      // Mesajlar sayfasına girildiğinde bildirimi temizle
+      setUnreadMessages(false);
+    }, [load, setUnreadMessages])
   );
 
   const handleDelete = () => {
