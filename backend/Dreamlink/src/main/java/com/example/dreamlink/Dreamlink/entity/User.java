@@ -44,6 +44,9 @@ public class User implements UserDetails {
     @Column(name = "location", length = 100)
     private String location;
 
+    @Column(name = "zodiac_sign", length = 30)
+    private String zodiacSign;
+
     @Column(name = "pp_url")
     private String avatarUrl;
 

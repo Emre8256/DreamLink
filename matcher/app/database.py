@@ -40,6 +40,8 @@ def _build_async_engine():
                 continue
             kept.append((key, value))
 
+        connect_args["server_settings"] = {"client_encoding": "utf8"}
+
         normalized_url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(kept), parts.fragment))
         return create_async_engine(normalized_url, future=True, echo=False, connect_args=connect_args)
 

@@ -1,6 +1,8 @@
 package com.example.dreamlink.Dreamlink.controller;
 
 import com.example.dreamlink.Dreamlink.dto.CreateDreamRequest;
+import com.example.dreamlink.Dreamlink.dto.DreamInterpretRequest;
+import com.example.dreamlink.Dreamlink.dto.DreamInterpretationResponse;
 import com.example.dreamlink.Dreamlink.dto.DreamResponse;
 import com.example.dreamlink.Dreamlink.service.DreamService;
 import jakarta.validation.Valid;
@@ -55,5 +57,13 @@ public class DreamController {
             @PathVariable UUID id,
             @RequestParam String visibility) {
         return ResponseEntity.ok(dreamService.updateVisibility(id, visibility));
+    }
+
+    @PostMapping("/{dreamId}/interpret")
+    public ResponseEntity<DreamInterpretationResponse> interpretDream(
+            @PathVariable UUID dreamId,
+            @RequestBody @Valid DreamInterpretRequest request) {
+        System.out.println("DEBUG: Interpret istegi ulasti. ID: " + dreamId);
+        return ResponseEntity.ok(dreamService.interpretDream(dreamId, request));
     }
 }

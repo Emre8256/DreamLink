@@ -55,18 +55,19 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (isLoading) return;
+    const currentSegment = String(segments[0] ?? '');
 
     // Check if user is in an authentication screen (login or register)
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
 
-    if (!user && !inAuthGroup) {
+    if (!user && !inAuthGroup && currentSegment !== 'login') {
       // Token yok ve auth ekranlarında değilse -> Login'e at
       router.replace('/login');
-    } else if (user && inAuthGroup) {
+    } else if (user && inAuthGroup && currentSegment !== '(tabs)') {
       // Token var ve auth ekranlarındaysa -> Ana sayfaya at
       router.replace('/(tabs)');
     }
-  }, [user, isLoading, segments]);
+  }, [user, isLoading, segments, router]);
 
   if (isLoading) {
     // Auth durumu yüklenirken boş ekran veya loading dönebiliriz.

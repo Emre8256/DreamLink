@@ -1,0 +1,115 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< com.example.dreamlink:Dreamlink >-------------------
+[INFO] Building Dreamlink 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.3.3:run (default-cli) > test-compile @ Dreamlink >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ Dreamlink ---
+[INFO] Copying 4 resources from src\main\resources to target\classes
+[INFO] Copying 7 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ Dreamlink ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ Dreamlink ---
+[INFO] Copying 1 resource from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ Dreamlink ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.3.3:run (default-cli) < test-compile @ Dreamlink <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.3.3:run (default-cli) @ Dreamlink ---
+[INFO] Attaching agents: []
+2026-03-12T02:13:50.288+03:00  INFO 26872 --- [Dreamlink] [           main] c.e.d.Dreamlink.DreamlinkApplication     : Starting DreamlinkApplication using Java 21.0.9 with PID 26872 (C:\octolabs\Dream-Link-main\backend\Dreamlink\target\classes started by ZaferEmre in C:\octolabs\Dream-Link-main\backend\Dreamlink)
+2026-03-12T02:13:50.292+03:00 DEBUG 26872 --- [Dreamlink] [           main] c.e.d.Dreamlink.DreamlinkApplication     : Running with Spring Boot v3.3.3, Spring v6.1.12
+2026-03-12T02:13:50.293+03:00  INFO 26872 --- [Dreamlink] [           main] c.e.d.Dreamlink.DreamlinkApplication     : The following 1 profile is active: "demo"
+2026-03-12T02:13:52.311+03:00  WARN 26872 --- [Dreamlink] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 16.
+2026-03-12T02:13:53.274+03:00  WARN 26872 --- [Dreamlink] [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+Hibernate: alter table if exists comments alter column content set data type TEXT
+Hibernate: alter table if exists dream_interpretations alter column content set data type TEXT
+Hibernate: alter table if exists dreams alter column description set data type TEXT
+Hibernate: alter table if exists messages alter column content set data type TEXT
+2026-03-12T02:13:54.885+03:00 DEBUG 26872 --- [Dreamlink] [           main] c.e.d.D.config.JwtAuthenticationFilter   : Filter 'jwtAuthenticationFilter' configured for use
+2026-03-12T02:13:54.934+03:00  INFO 26872 --- [Dreamlink] [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-03-12T02:13:54.934+03:00  WARN 26872 --- [Dreamlink] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used for username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider.
+2026-03-12T02:13:56.165+03:00  WARN 26872 --- [Dreamlink] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-03-12T02:13:56.655+03:00 DEBUG 26872 --- [Dreamlink] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, JwtAuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, ExceptionTranslationFilter, AuthorizationFilter
+2026-03-12T02:13:57.254+03:00  INFO 26872 --- [Dreamlink] [           main] c.e.d.Dreamlink.DreamlinkApplication     : Started DreamlinkApplication in 7.366 seconds (process running for 7.763)
+2026-03-12T02:14:12.436+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-1] o.s.security.web.FilterChainProxy        : Securing POST /api/auth/register
+2026-03-12T02:14:12.445+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-1] o.s.security.web.FilterChainProxy        : Secured POST /api/auth/register
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+Hibernate: insert into users (is_active,age,pp_url,bio,created_at,email,location,nickname,password_hash,role,updated_at,zodiac_sign,id) values (?,?,?,?,?,?,?,?,?,?,?,?,?)
+2026-03-12T02:14:12.974+03:00  WARN 26872 --- [Dreamlink] [nio-8088-exec-1] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 0, SQLState: 23502
+2026-03-12T02:14:12.974+03:00 ERROR 26872 --- [Dreamlink] [nio-8088-exec-1] o.h.engine.jdbc.spi.SqlExceptionHelper   : HATA: null value in column "nickname" of relation "users" violates not-null constraint
+  Detail: Hata veren satır (afd2345e-1771-4abc-bb34-cc19b24d3aec, t, null, null, null, 2026-03-12 02:14:12.942231, dbg021412@mail.com, null, null, $2a$10$3EzwAWVGUmd9heoq76Ljr.AcrpdwjIynRgORJyqrPQuVle0BnS4v., USER, 2026-03-12 02:14:12.942231, null) içeriyor.
+2026-03-12T02:14:13.002+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-1] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-12T02:14:13.029+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-2] o.s.security.web.FilterChainProxy        : Securing POST /api/auth/login
+2026-03-12T02:14:13.029+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-2] o.s.security.web.FilterChainProxy        : Secured POST /api/auth/login
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+2026-03-12T02:14:13.218+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-2] o.s.s.a.dao.DaoAuthenticationProvider    : Failed to find user 'dbg021412@mail.com'
+2026-03-12T02:14:13.220+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-12T02:14:13.247+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-2] o.s.s.w.s.HttpSessionRequestCache        : Saved request http://localhost:8088/api/auth/login?continue to session
+2026-03-12T02:14:13.247+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-2] o.s.s.w.a.Http403ForbiddenEntryPoint     : Pre-authenticated entry point called. Rejecting access
+2026-03-12T02:14:13.254+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-2] o.s.security.web.FilterChainProxy        : Securing POST /error
+2026-03-12T02:14:13.254+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-2] o.s.security.web.FilterChainProxy        : Secured POST /error
+2026-03-12T02:14:13.266+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-12T02:14:13.357+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /api/dreams
+2026-03-12T02:14:13.357+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /api/dreams
+2026-03-12T02:14:13.384+03:00  WARN 26872 --- [Dreamlink] [nio-8088-exec-4] .w.s.m.s.DefaultHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<com.example.dreamlink.Dreamlink.dto.DreamResponse> com.example.dreamlink.Dreamlink.controller.DreamController.createDream(com.example.dreamlink.Dreamlink.dto.CreateDreamRequest) with 3 errors: [Field error in object 'createDreamRequest' on field 'theme': rejected value [null]; codes [NotNull.createDreamRequest.theme,NotNull.theme,NotNull.com.example.dreamlink.Dreamlink.enums.DreamThemes,NotNull]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [createDreamRequest.theme,theme]; arguments []; default message [theme]]; default message [Bir tema seçmelisiniz]] [Field error in object 'createDreamRequest' on field 'visibility': rejected value [null]; codes [NotNull.createDreamRequest.visibility,NotNull.visibility,NotNull.com.example.dreamlink.Dreamlink.enums.VisibilityType,NotNull]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [createDreamRequest.visibility,visibility]; arguments []; default message [visibility]]; default message [Görünürlük ayarı seçmelisiniz]] [Field error in object 'createDreamRequest' on field 'description': rejected value [null]; codes [NotBlank.createDreamRequest.description,NotBlank.description,NotBlank.java.lang.String,NotBlank]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [createDreamRequest.description,description]; arguments []; default message [description]]; default message [Rüya içeriği boş olamaz]] ]
+2026-03-12T02:14:13.384+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-4] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-12T02:14:13.385+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /error
+2026-03-12T02:14:13.385+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /error
+2026-03-12T02:14:13.387+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-4] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-12T02:14:13.397+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-9] s.s.w.f.HttpStatusRequestRejectedHandler : Rejecting request due to: The request was rejected because the URL contained a potentially malicious String "//"
+
+org.springframework.security.web.firewall.RequestRejectedException: The request was rejected because the URL contained a potentially malicious String "//"
+	at org.springframework.security.web.firewall.StrictHttpFirewall.rejectedBlocklistedUrls(StrictHttpFirewall.java:539) ~[spring-security-web-6.3.3.jar:6.3.3]
+	at org.springframework.security.web.firewall.StrictHttpFirewall.getFirewalledRequest(StrictHttpFirewall.java:509) ~[spring-security-web-6.3.3.jar:6.3.3]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:211) ~[spring-security-web-6.3.3.jar:6.3.3]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191) ~[spring-security-web-6.3.3.jar:6.3.3]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:195) ~[spring-webmvc-6.1.12.jar:6.1.12]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:230) ~[spring-security-config-6.3.3.jar:6.3.3]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:352) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:268) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.12.jar:6.1.12]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:384) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:904) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1741) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1190) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63) ~[tomcat-embed-core-10.1.28.jar:10.1.28]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-03-12T02:14:13.403+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-9] o.s.security.web.FilterChainProxy        : Securing POST /error
+2026-03-12T02:14:13.403+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-9] o.s.security.web.FilterChainProxy        : Secured POST /error
+2026-03-12T02:14:13.405+03:00 DEBUG 26872 --- [Dreamlink] [nio-8088-exec-9] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext

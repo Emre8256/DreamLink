@@ -11,6 +11,7 @@ import {
     Keyboard,
     Alert,
     Platform,
+    Modal,
 } from 'react-native';
 import Animated, {
     useAnimatedKeyboard,
@@ -30,6 +31,9 @@ import {
     getComments,
     addComment,
     toggleLike,
+    interpretDream,
+    DreamInterpretationResponse,
+    DreamInterpretPersona,
     DreamResponse,
     CommentResponse,
     formatRelativeTime,
@@ -43,6 +47,33 @@ const VISIBILITY_ICON: Record<string, string> = {
     PRIVATE: 'lock-closed-outline',
 };
 
+const ZODIAC_SIGNS = [
+    'Koc',
+    'Boga',
+    'Ikizler',
+    'Yengec',
+    'Aslan',
+    'Basak',
+    'Terazi',
+    'Akrep',
+    'Yay',
+    'Oglak',
+    'Kova',
+    'Balik',
+];
+
+const PERSONAS: { key: DreamInterpretPersona; label: string; subtitle: string }[] = [
+    { key: 'FREUD', label: 'Sigmund Freud', subtitle: 'Psikanalitik, id-ego catismasi' },
+    { key: 'JUNG', label: 'Carl Jung', subtitle: 'Arketipler, golge, kolektif bilincalti' },
+    { key: 'ASTROLOG', label: 'Astrolog', subtitle: 'Burc + transit + kozmik semboller' },
+];
+
+const PERSONA_THEME: Record<DreamInterpretPersona, { card: string; text: string; accent: string }> = {
+    FREUD: { card: '#F8EFE7', text: '#4A2E1E', accent: '#A15A2A' },
+    JUNG: { card: '#EDF5EE', text: '#1F3A2D', accent: '#2F7D59' },
+    ASTROLOG: { card: '#EFF4FF', text: '#1D2E5B', accent: '#3F63D8' },
+};
+
 export default function DreamDetailScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
@@ -54,6 +85,11 @@ export default function DreamDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [commentText, setCommentText] = useState('');
     const [sending, setSending] = useState(false);
+    const [analysisModalVisible, setAnalysisModalVisible] = useState(false);
+    const [selectedZodiac, setSelectedZodiac] = useState<string | null>(null);
+    const [selectedPersona, setSelectedPersona] = useState<DreamInterpretPersona | null>(null);
+    const [analysisLoading, setAnalysisLoading] = useState(false);
+    const [interpretation, setInterpretation] = useState<DreamInterpretationResponse | null>(null);
 
     const flatListRef = useRef<FlatList>(null);
 
@@ -112,6 +148,32 @@ export default function DreamDetailScreen() {
             await toggleLike(dream.id);
         } catch {
             setDream({ ...dream, isLiked: !newLikedState, likeCount: dream.likeCount });
+        }
+    };
+
+    const closeAnalysisModal = () => {
+        if (analysisLoading) return;
+        setAnalysisModalVisible(false);
+        setSelectedZodiac(null);
+        setSelectedPersona(null);
+    };
+
+    const handleAnalyzeDream = async () => {
+        if (!id || !selectedZodiac || !selectedPersona) {
+            return;
+        }
+        setAnalysisLoading(true);
+        try {
+            const result = await interpretDream(id as string, {
+                zodiacSign: selectedZodiac,
+                persona: selectedPersona,
+            });
+            setInterpretation(result);
+            closeAnalysisModal();
+        } catch (error) {
+            showAlert('Hata', 'Rüya analizi alınamadı.');
+        } finally {
+            setAnalysisLoading(false);
         }
     };
 
@@ -186,6 +248,42 @@ export default function DreamDetailScreen() {
                 </View>
             </View>
 
+            <TouchableOpacity
+                style={styles.analysisButton}
+                onPress={() => setAnalysisModalVisible(true)}
+                activeOpacity={0.85}
+            >
+                <Ionicons name="sparkles-outline" size={18} color="#fff" />
+                <Text style={styles.analysisButtonText}>Analiz Al</Text>
+            </TouchableOpacity>
+
+            {interpretation && (
+                <View
+                    style={[
+                        styles.interpretationCard,
+                        {
+                            backgroundColor: PERSONA_THEME[interpretation.persona].card,
+                            borderLeftColor: PERSONA_THEME[interpretation.persona].accent,
+                        },
+                    ]}
+                >
+                    <Text
+                        style={[
+                            styles.interpretationTitle,
+                            { color: PERSONA_THEME[interpretation.persona].accent },
+                        ]}
+                    >
+                        {PERSONAS.find(p => p.key === interpretation.persona)?.label} Analizi
+                    </Text>
+                    <Text style={[styles.interpretationMeta, { color: PERSONA_THEME[interpretation.persona].text }]}>
+                        Burc: {interpretation.zodiacSign}
+                    </Text>
+                    <Text style={[styles.interpretationContent, { color: PERSONA_THEME[interpretation.persona].text }]}>
+                        {interpretation.content}
+                    </Text>
+                </View>
+            )}
+
             {/* Comments section label */}
             <View style={styles.commentsSectionHeader}>
                 <Text style={styles.commentsSectionTitle}>Yorumlar</Text>
@@ -238,6 +336,81 @@ export default function DreamDetailScreen() {
                 <Text style={styles.navTitle}>Rüya</Text>
                 <View style={{ width: 40 }} />
             </View>
+
+            <Modal
+                animationType="slide"
+                transparent
+                visible={analysisModalVisible}
+                onRequestClose={closeAnalysisModal}
+            >
+                <View style={styles.modalBackdrop}>
+                    <View style={styles.modalCard}>
+                        <Text style={styles.modalTitle}>Burç Seçimi</Text>
+                        <View style={styles.optionGrid}>
+                            {ZODIAC_SIGNS.map(sign => (
+                                <TouchableOpacity
+                                    key={sign}
+                                    style={[
+                                        styles.optionChip,
+                                        selectedZodiac === sign && styles.optionChipSelected,
+                                    ]}
+                                    onPress={() => setSelectedZodiac(sign)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.optionChipText,
+                                            selectedZodiac === sign && styles.optionChipTextSelected,
+                                        ]}
+                                    >
+                                        {sign}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={[styles.modalTitle, { marginTop: 18 }]}>Analist Seçimi</Text>
+                        <View style={styles.personaList}>
+                            {PERSONAS.map(persona => (
+                                <TouchableOpacity
+                                    key={persona.key}
+                                    style={[
+                                        styles.personaRow,
+                                        selectedPersona === persona.key && styles.personaRowSelected,
+                                    ]}
+                                    onPress={() => setSelectedPersona(persona.key)}
+                                >
+                                    <Text style={styles.personaLabel}>{persona.label}</Text>
+                                    <Text style={styles.personaSubtitle}>{persona.subtitle}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={styles.modalCancelBtn}
+                                onPress={closeAnalysisModal}
+                                disabled={analysisLoading}
+                            >
+                                <Text style={styles.modalCancelText}>Vazgeç</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.modalConfirmBtn,
+                                    (!selectedPersona || !selectedZodiac || analysisLoading) && styles.modalConfirmBtnDisabled,
+                                ]}
+                                onPress={handleAnalyzeDream}
+                                disabled={!selectedPersona || !selectedZodiac || analysisLoading}
+                            >
+                                {analysisLoading ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Text style={styles.modalConfirmText}>Analizi Getir</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             <Animated.View style={[styles.inner, containerAnimatedStyle]}>
                 <FlatList
@@ -419,6 +592,43 @@ const styles = StyleSheet.create({
         paddingTop: 16,
         marginBottom: 20,
     },
+    analysisButton: {
+        marginBottom: 18,
+        backgroundColor: '#5B7CFA',
+        borderRadius: 14,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    analysisButtonText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    interpretationCard: {
+        borderRadius: 14,
+        borderLeftWidth: 4,
+        padding: 14,
+        marginBottom: 12,
+    },
+    interpretationTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        marginBottom: 6,
+    },
+    interpretationMeta: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    interpretationContent: {
+        fontSize: 14,
+        lineHeight: 21,
+        fontWeight: '500',
+    },
     statBtn: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -534,6 +744,106 @@ const styles = StyleSheet.create({
     emptySubText: {
         fontSize: 13,
         color: '#D1D5DB',
+    },
+
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+    },
+    modalCard: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 16,
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#1A1A2E',
+        marginBottom: 10,
+    },
+    optionGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    optionChip: {
+        backgroundColor: '#F5F6FF',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#E3E8FF',
+    },
+    optionChipSelected: {
+        backgroundColor: '#E7EDFF',
+        borderColor: '#5B7CFA',
+    },
+    optionChipText: {
+        color: '#6B7280',
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    optionChipTextSelected: {
+        color: '#3153CC',
+    },
+    personaList: {
+        gap: 8,
+    },
+    personaRow: {
+        borderWidth: 1,
+        borderColor: '#E9EAF4',
+        borderRadius: 12,
+        padding: 10,
+        backgroundColor: '#FAFAFF',
+    },
+    personaRowSelected: {
+        borderColor: '#5B7CFA',
+        backgroundColor: '#EEF2FF',
+    },
+    personaLabel: {
+        color: '#2B3148',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    personaSubtitle: {
+        color: '#78819A',
+        fontSize: 12,
+        marginTop: 2,
+    },
+    modalActions: {
+        marginTop: 14,
+        flexDirection: 'row',
+        gap: 10,
+    },
+    modalCancelBtn: {
+        flex: 1,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#D7DBEB',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+    },
+    modalCancelText: {
+        color: '#59607A',
+        fontWeight: '700',
+    },
+    modalConfirmBtn: {
+        flex: 1,
+        borderRadius: 12,
+        backgroundColor: '#5B7CFA',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+    },
+    modalConfirmBtnDisabled: {
+        backgroundColor: '#B3BACE',
+    },
+    modalConfirmText: {
+        color: '#fff',
+        fontWeight: '700',
     },
 
     // INPUT BAR

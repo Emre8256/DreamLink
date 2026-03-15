@@ -120,8 +120,6 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     await logout();
-    // Router handling is done in AuthContext usually, but strictly:
-    router.replace('/login');
   };
 
   const handleEditProfile = () => {

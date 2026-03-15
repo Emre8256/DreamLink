@@ -1,0 +1,138 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< com.example.dreamlink:Dreamlink >-------------------
+[INFO] Building Dreamlink 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.3.3:run (default-cli) > test-compile @ Dreamlink >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ Dreamlink ---
+[INFO] Copying 4 resources from src\main\resources to target\classes
+[INFO] Copying 7 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ Dreamlink ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ Dreamlink ---
+[INFO] Copying 1 resource from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ Dreamlink ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.3.3:run (default-cli) < test-compile @ Dreamlink <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.3.3:run (default-cli) @ Dreamlink ---
+[INFO] Attaching agents: []
+2026-03-12T02:16:51.530+03:00  INFO 28032 --- [Dreamlink] [           main] c.e.d.Dreamlink.DreamlinkApplication     : Starting DreamlinkApplication using Java 21.0.9 with PID 28032 (C:\octolabs\Dream-Link-main\backend\Dreamlink\target\classes started by ZaferEmre in C:\octolabs\Dream-Link-main\backend\Dreamlink)
+2026-03-12T02:16:51.537+03:00 DEBUG 28032 --- [Dreamlink] [           main] c.e.d.Dreamlink.DreamlinkApplication     : Running with Spring Boot v3.3.3, Spring v6.1.12
+2026-03-12T02:16:51.538+03:00  INFO 28032 --- [Dreamlink] [           main] c.e.d.Dreamlink.DreamlinkApplication     : The following 1 profile is active: "demo"
+2026-03-12T02:16:53.851+03:00  WARN 28032 --- [Dreamlink] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 16.
+2026-03-12T02:16:54.529+03:00  WARN 28032 --- [Dreamlink] [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+Hibernate: alter table if exists comments alter column content set data type TEXT
+Hibernate: alter table if exists dream_interpretations alter column content set data type TEXT
+Hibernate: alter table if exists dreams alter column description set data type TEXT
+Hibernate: alter table if exists messages alter column content set data type TEXT
+2026-03-12T02:16:56.363+03:00 DEBUG 28032 --- [Dreamlink] [           main] c.e.d.D.config.JwtAuthenticationFilter   : Filter 'jwtAuthenticationFilter' configured for use
+2026-03-12T02:16:56.443+03:00  INFO 28032 --- [Dreamlink] [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-03-12T02:16:56.450+03:00  WARN 28032 --- [Dreamlink] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used for username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider.
+2026-03-12T02:16:57.780+03:00  WARN 28032 --- [Dreamlink] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-03-12T02:16:58.343+03:00 DEBUG 28032 --- [Dreamlink] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, JwtAuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, ExceptionTranslationFilter, AuthorizationFilter
+2026-03-12T02:16:58.988+03:00  INFO 28032 --- [Dreamlink] [           main] c.e.d.Dreamlink.DreamlinkApplication     : Started DreamlinkApplication in 7.923 seconds (process running for 8.479)
+2026-03-12T02:17:11.106+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-1] o.s.security.web.FilterChainProxy        : Securing POST /api/auth/register
+2026-03-12T02:17:11.109+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-1] o.s.security.web.FilterChainProxy        : Secured POST /api/auth/register
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+Hibernate: select u1_0.id from users u1_0 where u1_0.nickname=? fetch first ? rows only
+Hibernate: insert into users (is_active,age,pp_url,bio,created_at,email,location,nickname,password_hash,role,updated_at,zodiac_sign,id) values (?,?,?,?,?,?,?,?,?,?,?,?,?)
+2026-03-12T02:17:11.407+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-1] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-12T02:17:11.411+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-2] o.s.security.web.FilterChainProxy        : Securing POST /api/auth/login
+2026-03-12T02:17:11.412+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-2] o.s.security.web.FilterChainProxy        : Secured POST /api/auth/login
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+Hibernate: select s1_0.id,s1_0.created_at,s1_0.current_period_end,s1_0.expires_at,s1_0.plan_tier,s1_0.product_id,s1_0.status,s1_0.store,s1_0.store_subscription_id,s1_0.store_transaction_id,s1_0.updated_at,s1_0.user_id from subscriptions s1_0 where s1_0.user_id=?
+2026-03-12T02:17:11.551+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-2] o.s.s.a.dao.DaoAuthenticationProvider    : Authenticated user
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+2026-03-12T02:17:11.558+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-12T02:17:11.558+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] o.s.security.web.FilterChainProxy        : Securing POST /api/dreams
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+Hibernate: select s1_0.id,s1_0.created_at,s1_0.current_period_end,s1_0.expires_at,s1_0.plan_tier,s1_0.product_id,s1_0.status,s1_0.store,s1_0.store_subscription_id,s1_0.store_transaction_id,s1_0.updated_at,s1_0.user_id from subscriptions s1_0 where s1_0.user_id=?
+2026-03-12T02:17:11.620+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] o.s.security.web.FilterChainProxy        : Secured POST /api/dreams
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+Hibernate: select s1_0.id,s1_0.created_at,s1_0.current_period_end,s1_0.expires_at,s1_0.plan_tier,s1_0.product_id,s1_0.status,s1_0.store,s1_0.store_subscription_id,s1_0.store_transaction_id,s1_0.updated_at,s1_0.user_id from subscriptions s1_0 where s1_0.user_id=?
+Hibernate: select d1_0.id,d1_0.comment_count,d1_0.created_at,d1_0.description,d1_0.like_count,d1_0.theme,d1_0.title,d1_0.user_id,d1_0.visibility from dreams d1_0 where d1_0.user_id=? and d1_0.created_at>=? order by d1_0.created_at desc
+Hibernate: select t1_0.id,t1_0.description,t1_0.name from tags t1_0 where t1_0.name=?
+Hibernate: insert into tags (description,name,id) values (?,?,?)
+Hibernate: insert into dreams (comment_count,created_at,description,like_count,theme,title,user_id,visibility,id) values (?,?,?,?,?,?,?,?,?)
+Hibernate: insert into dream_tags (dream_id,tag_id) values (?,?)
+Hibernate: select d1_0.id,d1_0.comment_count,d1_0.created_at,d1_0.description,d1_0.like_count,d1_0.theme,d1_0.title,d1_0.user_id,d1_0.visibility from dreams d1_0 where d1_0.user_id<>? and d1_0.created_at>=? order by d1_0.created_at desc fetch first ? rows only
+2026-03-12T02:17:11.676+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+[MatchService] 'dbg' <-> 'Seed Dream Two' score=0.0000
+2026-03-12T02:17:11.676+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+[MatchService] 'dbg' <-> 'Seed Dream One' score=0.0000
+2026-03-12T02:17:11.682+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=05b337d1-31a2-4b63-a5e4-5091400fd582
+[MatchService] 'dbg' <-> 'Nuclear Trace' score=0.0000
+2026-03-12T02:17:11.682+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=4edcf2e7-e4e5-48ec-8d8c-2c2e89da4fe0
+[MatchService] 'dbg' <-> 'Trace Ruyasi' score=0.0000
+2026-03-12T02:17:11.682+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=92f86855-64bb-43a1-b8e4-19268b71d271
+[MatchService] 'dbg' <-> 'Test Ruyasi' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=9010047d-db87-442b-8c63-2ac7447bb32a
+[MatchService] 'dbg' <-> 'fransa ' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=d4e98cd6-0270-40c6-af4c-ee5a87bf79f8
+[MatchService] 'dbg' <-> 'amerika ' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=48e5abeb-9529-4232-9ca8-0ed110e691fc
+[MatchService] 'dbg' <-> 'türkiye ' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=1db95aa8-ad0e-4d18-ac35-45eda9eef857
+[MatchService] 'dbg' <-> 'türkiye ' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=e4d9c658-37d5-469c-a593-effaff3e37ab
+[MatchService] 'dbg' <-> 'rüya' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=889cf469-dff6-43ab-934c-eae8b0155b96
+[MatchService] 'dbg' <-> 'Yeni rüyalar' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=6765d220-f1ba-4b5a-9e45-6a125ec5f3b5
+[MatchService] 'dbg' <-> 'ormanda yürüdüm' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=d91d8a4f-eea5-4bf7-924e-68b70e24e7a5
+[MatchService] 'dbg' <-> 'yeni rüya' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=a97c3593-2752-4832-8044-4a13c2c7a9f5
+[MatchService] 'dbg' <-> 'orman yürüyüþü' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=0387ca30-c2e8-5fe6-b0ef-0074df75f89b
+[MatchService] 'dbg' <-> 'Bulutlarin Ustunde Tren' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=c3089ace-fcd3-53b6-8491-8a3df9d428c3
+[MatchService] 'dbg' <-> 'Sessiz Liman Haritasi' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=6a848f6a-ebd6-51de-854f-6e9117de4d4b
+[MatchService] 'dbg' <-> 'Yagmurun Arka Odasi' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=bca9d700-8e3d-50d4-8541-3cbfc4acb64e
+[MatchService] 'dbg' <-> 'Yildiz Tozu Pazari' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=8f5fd058-2dfe-569e-9346-8afd428db097
+[MatchService] 'dbg' <-> 'Sessiz Kehanet' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=189f457d-1239-54b9-a1a4-2777e579d337
+[MatchService] 'dbg' <-> 'Gece Mesaisi' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=593d6ef1-6317-5452-a9b5-3224960c3e13
+[MatchService] 'dbg' <-> 'Ayna Kuyusu' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=d0704514-4305-5cb3-bc81-03aef0d83afe
+[MatchService] 'dbg' <-> 'Otobus Duragi' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=a74caa9d-79bf-5438-85c3-f45d88153c52
+[MatchService] 'dbg' <-> 'Mahalle Pazari' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=abe659d1-8f40-5fa5-ac4f-9a72c52993eb
+[MatchService] 'dbg' <-> 'Kayip Konser' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=dfe2abf4-711d-538a-8ccb-0e02542465a8
+[MatchService] 'dbg' <-> 'Golge Bahcesi' score=0.0000
+2026-03-12T02:17:11.683+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=3d662fba-bc5c-520b-97b3-39e72b0fcff6
+[MatchService] 'dbg' <-> 'Koridordaki Adimlar' score=0.0000
+2026-03-12T02:17:11.688+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=4688e4a6-1827-5b2c-8e54-097050a2baa2
+[MatchService] 'dbg' <-> 'Asansor 13' score=0.0000
+2026-03-12T02:17:11.688+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=a9dd9320-aa7e-5500-a856-75dfc0943b0e
+[MatchService] 'dbg' <-> 'Cam Ormani' score=0.0000
+2026-03-12T02:17:11.690+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-6] c.e.d.Dreamlink.service.MatchService     : Matcher zero score leftDream=c73c8870-0166-4cfb-a470-6a5b7715f50d rightDream=a9f6c8f2-dac6-5d80-bc0e-efd6aab350ba
+[MatchService] 'dbg' <-> 'Sonu Gelmeyen Merdiven' score=0.0000
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+2026-03-12T02:17:11.726+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /api/dreams/c73c8870-0166-4cfb-a470-6a5b7715f50d/interpret
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+Hibernate: select s1_0.id,s1_0.created_at,s1_0.current_period_end,s1_0.expires_at,s1_0.plan_tier,s1_0.product_id,s1_0.status,s1_0.store,s1_0.store_subscription_id,s1_0.store_transaction_id,s1_0.updated_at,s1_0.user_id from subscriptions s1_0 where s1_0.user_id=?
+2026-03-12T02:17:11.732+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /api/dreams/c73c8870-0166-4cfb-a470-6a5b7715f50d/interpret
+DEBUG: Interpret istegi ulasti. ID: c73c8870-0166-4cfb-a470-6a5b7715f50d
+Hibernate: select d1_0.id,d1_0.comment_count,d1_0.created_at,d1_0.description,d1_0.like_count,d1_0.theme,d1_0.title,d1_0.user_id,d1_0.visibility from dreams d1_0 where d1_0.id=?
+Hibernate: select u1_0.id,u1_0.is_active,u1_0.age,u1_0.pp_url,u1_0.bio,u1_0.created_at,u1_0.email,u1_0.location,u1_0.nickname,u1_0.password_hash,u1_0.role,u1_0.updated_at,u1_0.zodiac_sign from users u1_0 where u1_0.email=?
+Hibernate: select s1_0.id,s1_0.created_at,s1_0.current_period_end,s1_0.expires_at,s1_0.plan_tier,s1_0.product_id,s1_0.status,s1_0.store,s1_0.store_subscription_id,s1_0.store_transaction_id,s1_0.updated_at,s1_0.user_id from subscriptions s1_0 where s1_0.user_id=?
+2026-03-12T02:17:11.755+03:00  WARN 28032 --- [Dreamlink] [         task-1] c.e.d.D.service.AiMatcherClientService   : AI matcher process-dream failed for dreamId=c73c8870-0166-4cfb-a470-6a5b7715f50d: 500 Internal Server Error: "{"detail":"Failed to process dream: connect() got an unexpected keyword argument 'client_encoding'"}"
+2026-03-12T02:17:11.758+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /error
+2026-03-12T02:17:11.758+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /error
+2026-03-12T02:17:11.762+03:00 DEBUG 28032 --- [Dreamlink] [nio-8091-exec-4] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext

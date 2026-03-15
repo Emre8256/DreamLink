@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import os
+import traceback
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from openai import OpenAI
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import matcher
 from .database import AsyncSessionLocal
 from .models import Dream, User
+
+load_dotenv()
 
 app = FastAPI(title="Dream-Link AI Matcher", version="1.0.0")
 
@@ -28,6 +33,29 @@ app.add_middleware(
 
 PROCESS_DREAM_RETRY_COUNT = int(os.getenv("PROCESS_DREAM_RETRY_COUNT", "6"))
 PROCESS_DREAM_RETRY_DELAY_SECONDS = float(os.getenv("PROCESS_DREAM_RETRY_DELAY_SECONDS", "0.35"))
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+PRIMARY_MODEL = "openrouter/hunter-alpha"
+OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "http://localhost")
+OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "Dream-Link Matcher")
+
+openrouter_client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
+    timeout=60.0,
+)
+
+PERSONA_PROMPTS: dict[str, str] = {
+    "FREUD": "Cevabi Turkce ver. Sen Sigmund Freud'sun. Ruyayi bastirilmis arzular ve cocukluk travmalari uzerinden analiz et. Dilin profesyonel ama sert olsun.",
+    "JUNG": "Cevabi Turkce ver. Sen Carl Jung'sun. Ruyayi kolektif bilincalti, arketipler ve golge taraf uzerinden mistik bir dille analiz et.",
+    "ASTROLOG": "Cevabi Turkce ver. Sen bilge bir Astrologsun. Kullanicinin [ZodiacSign] burcu oldugunu bilerek, ruyayi gezegen hareketleri ve kozmik enerjilerle yorumla.",
+}
+
+PERSONA_DISPLAY_NAME: dict[str, str] = {
+    "FREUD": "Sigmund Freud",
+    "JUNG": "Carl Jung",
+    "ASTROLOG": "Astrolog",
+}
 
 
 class ProcessDreamResponse(BaseModel):
@@ -49,6 +77,18 @@ class MatchListResponse(BaseModel):
     userId: uuid.UUID
     total: int
     matches: list[MatchResultDTO]
+
+
+class InterpretDreamRequest(BaseModel):
+    dreamText: str
+    persona: str
+    zodiacSign: str
+
+
+class InterpretDreamResponse(BaseModel):
+    persona: str
+    zodiacSign: str
+    content: str
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -143,6 +183,103 @@ async def _get_dream_with_retry(session: AsyncSession, dream_id: uuid.UUID) -> D
             await asyncio.sleep(PROCESS_DREAM_RETRY_DELAY_SECONDS)
 
     return None
+
+
+def _normalize_persona(persona: str) -> str:
+    value = persona.strip().upper()
+    aliases = {
+        "FREUD": "FREUD",
+        "SIGMUND FREUD": "FREUD",
+        "JUNG": "JUNG",
+        "CARL JUNG": "JUNG",
+        "ASTROLOG": "ASTROLOG",
+        "ASTROLOGER": "ASTROLOG",
+        "ASTROLOGIST": "ASTROLOG",
+    }
+    normalized = aliases.get(value)
+    if normalized is None:
+        raise HTTPException(status_code=400, detail="Unsupported persona")
+    return normalized
+
+
+def _extract_content(raw_content: Any) -> str:
+    if isinstance(raw_content, str):
+        return raw_content.strip()
+    if isinstance(raw_content, list):
+        parts: list[str] = []
+        for part in raw_content:
+            if isinstance(part, dict):
+                text_part = part.get("text")
+                if isinstance(text_part, str):
+                    parts.append(text_part)
+        return "\n".join(parts).strip()
+    return ""
+
+
+def _build_system_prompt(persona: str, zodiac_sign: str) -> str:
+    template = PERSONA_PROMPTS[persona]
+    return template.replace("[ZodiacSign]", zodiac_sign)
+
+
+def _extract_status_code(exc: Exception) -> int | None:
+    status_code = getattr(exc, "status_code", None)
+    if isinstance(status_code, int):
+        return status_code
+
+    response = getattr(exc, "response", None)
+    if response is not None:
+        response_status = getattr(response, "status_code", None)
+        if isinstance(response_status, int):
+            return response_status
+
+    return None
+
+
+def _generate_interpretation_with_llm(dream_text: str, persona: str, zodiac_sign: str) -> str:
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=503, detail="OPENROUTER_API_KEY is missing")
+
+    system_prompt = _build_system_prompt(persona, zodiac_sign)
+    user_content = (
+        f"Sistem Talimati: {system_prompt}\n\n"
+        f"Persona: {PERSONA_DISPLAY_NAME[persona]}\n"
+        f"Burc: {zodiac_sign}\n"
+        "Gorev: Asagidaki ruyayi secilen personanin perspektifinden yorumla. "
+        "Yaniti sadece yorum metni olarak ver.\n\n"
+        f"Ruya: {dream_text.strip()}"
+    )
+
+    try:
+        completion = openrouter_client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": OPENROUTER_SITE_URL,
+                "X-OpenRouter-Title": OPENROUTER_APP_NAME,
+            },
+            extra_body={"reasoning": {"enabled": True}},
+            model=PRIMARY_MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": user_content,
+                }
+            ],
+        )
+
+        if not completion.choices:
+            raise RuntimeError("Empty completion choices")
+
+        raw_content = completion.choices[0].message.content
+        if not isinstance(raw_content, str):
+            raise RuntimeError("OpenRouter content is not a string")
+
+        content = raw_content.strip()
+        if not content:
+            raise RuntimeError("Empty completion content")
+        return content
+    except Exception as exc:  # pragma: no cover - external API variability
+        status_code = _extract_status_code(exc)
+        print(f"OPENROUTER MODEL HATASI [{PRIMARY_MODEL}] status={status_code}: {str(exc)}")
+        raise HTTPException(status_code=502, detail=f"OpenRouter request failed: {exc}") from exc
 
 
 @app.post("/process-dream/{dream_id}", response_model=ProcessDreamResponse)
@@ -266,3 +403,34 @@ async def get_matches(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to get matches: {exc}") from exc
+
+
+@app.post("/interpret-dream", response_model=InterpretDreamResponse)
+async def interpret_dream(request: InterpretDreamRequest) -> InterpretDreamResponse:
+    try:
+        dream_text = request.dreamText.strip()
+        zodiac_sign = request.zodiacSign.strip()
+
+        if not dream_text:
+            raise HTTPException(status_code=400, detail="dreamText cannot be empty")
+        if not zodiac_sign:
+            raise HTTPException(status_code=400, detail="zodiacSign cannot be empty")
+
+        persona = _normalize_persona(request.persona)
+        content = _generate_interpretation_with_llm(
+            dream_text=dream_text,
+            persona=persona,
+            zodiac_sign=zodiac_sign,
+        )
+
+        return InterpretDreamResponse(
+            persona=persona,
+            zodiacSign=zodiac_sign,
+            content=content,
+        )
+    except Exception as e:
+        print(f"OPENROUTER HATASI: {str(e)}")
+        traceback.print_exc()
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(status_code=502, detail=f"OpenRouter request failed: {e}") from e

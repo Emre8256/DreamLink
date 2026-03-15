@@ -146,6 +146,22 @@ export interface DreamResponse {
   visibility: 'PUBLIC' | 'FOLLOWERS_ONLY' | 'PRIVATE';
 }
 
+export type DreamInterpretPersona = 'FREUD' | 'JUNG' | 'ASTROLOG';
+
+export interface DreamInterpretRequest {
+  persona: DreamInterpretPersona;
+  zodiacSign: string;
+}
+
+export interface DreamInterpretationResponse {
+  id: string;
+  dreamId: string;
+  persona: DreamInterpretPersona;
+  content: string;
+  zodiacSign: string;
+  createdAt: string;
+}
+
 export interface CommentResponse {
   id: string;
   content: string;
@@ -371,6 +387,24 @@ export async function getDreamById(id: string): Promise<DreamResponse> {
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch dream: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function interpretDream(
+  dreamId: string,
+  request: DreamInterpretRequest
+): Promise<DreamInterpretationResponse> {
+  const token = await AsyncStorage.getItem('auth_token');
+  console.log('WS-TOKEN:', token);
+  const headers = await getAuthHeaders();
+  const response = await fetchWithAuth(`${BASE_URL}/api/dreams/${dreamId}/interpret`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to interpret dream: ${response.status}`);
   }
   return response.json();
 }

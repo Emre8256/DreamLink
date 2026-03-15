@@ -1,10 +1,14 @@
 package com.example.dreamlink.Dreamlink.service;
 
 import com.example.dreamlink.Dreamlink.dto.CreateDreamRequest;
+import com.example.dreamlink.Dreamlink.dto.DreamInterpretRequest;
+import com.example.dreamlink.Dreamlink.dto.DreamInterpretationResponse;
 import com.example.dreamlink.Dreamlink.dto.DreamResponse;
 import com.example.dreamlink.Dreamlink.entity.Dream;
+import com.example.dreamlink.Dreamlink.entity.DreamInterpretation;
 import com.example.dreamlink.Dreamlink.entity.Tag;
 import com.example.dreamlink.Dreamlink.entity.User;
+import com.example.dreamlink.Dreamlink.repository.DreamInterpretationRepository;
 import com.example.dreamlink.Dreamlink.repository.DreamRepository;
 import com.example.dreamlink.Dreamlink.repository.TagRepository;
 import com.example.dreamlink.Dreamlink.repository.UserRepository;
@@ -14,12 +18,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static org.springframework.http.HttpStatus.*;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +36,7 @@ public class DreamService {
     private final DreamRepository dreamRepository;
     private final TagRepository tagRepository;
     private final UserRepository userRepository;
+    private final DreamInterpretationRepository dreamInterpretationRepository;
 
     private final MatchService matchService;
     private final AiMatcherClientService aiMatcherClientService;
@@ -48,9 +57,9 @@ public class DreamService {
                 java.time.LocalDate.now(), java.time.LocalTime.MIDNIGHT);
         List<com.example.dreamlink.Dreamlink.entity.Dream> todayDreams = dreamRepository
                 .findTodayDreamsByUser(currentUser.getId(), startOfDay);
-        if (!todayDreams.isEmpty()) {
-            throw new RuntimeException("Bugün zaten bir rüya paylaştın. Yarın tekrar deneyebilirsin.");
-        }
+        //if (!todayDreams.isEmpty()) {
+        //    throw new RuntimeException("Bugün zaten bir rüya paylaştın. Yarın tekrar deneyebilirsin.");
+        //}
 
         List<Tag> tags = new ArrayList<>();
         if (request.tagNames() != null) {
@@ -192,6 +201,88 @@ public class DreamService {
         dream.setVisibility(newVisibility);
         Dream saved = dreamRepository.save(dream);
         return mapToResponse(saved);
+    }
+
+    @Transactional
+    public DreamInterpretationResponse interpretDream(UUID dreamId, DreamInterpretRequest request) {
+        try {
+            Dream dream = dreamRepository.findById(dreamId)
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Rüya bulunamadı"));
+
+            User currentUser = getCurrentUser();
+            if (!dream.getUser().getId().equals(currentUser.getId())) {
+                throw new ResponseStatusException(FORBIDDEN, "Sadece kendi rüyan için analiz alabilirsin");
+            }
+
+            String persona = normalizePersona(request.persona());
+            String zodiacSign = resolveAndPersistZodiacSign(currentUser, request.zodiacSign());
+
+            DreamInterpretation existing = dreamInterpretationRepository
+                    .findByDreamIdAndPersona(dreamId, persona)
+                    .orElse(null);
+            if (existing != null) {
+                return mapInterpretation(existing);
+            }
+
+            String content = aiMatcherClientService.requestDreamInterpretation(
+                    dream.getTitle(),
+                    dream.getDescription(),
+                    persona,
+                    zodiacSign);
+
+            DreamInterpretation saved = dreamInterpretationRepository.save(
+                    DreamInterpretation.builder()
+                            .dream(dream)
+                            .persona(persona)
+                            .content(content)
+                            .zodiacSign(zodiacSign)
+                            .createdAt(LocalDateTime.now())
+                            .build());
+
+            return mapInterpretation(saved);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("ASIL HATA BURADA: " + e.getMessage());
+            if (e instanceof ResponseStatusException responseStatusException) {
+                throw responseStatusException;
+            }
+            throw new RuntimeException("AI HATASI: " + e.getMessage(), e);
+        }
+    }
+
+    private String resolveAndPersistZodiacSign(User currentUser, String zodiacSignFromRequest) {
+        String incoming = zodiacSignFromRequest == null ? "" : zodiacSignFromRequest.trim();
+        if (!incoming.isBlank()) {
+            currentUser.setZodiacSign(incoming);
+            userRepository.save(currentUser);
+            return incoming;
+        }
+
+        String persisted = currentUser.getZodiacSign() == null ? "" : currentUser.getZodiacSign().trim();
+        if (persisted.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Burc bilgisi gerekli");
+        }
+        return persisted;
+    }
+
+    private DreamInterpretationResponse mapInterpretation(DreamInterpretation interpretation) {
+        return new DreamInterpretationResponse(
+                interpretation.getId(),
+                interpretation.getDream().getId(),
+                interpretation.getPersona(),
+                interpretation.getContent(),
+                interpretation.getZodiacSign(),
+                interpretation.getCreatedAt());
+    }
+
+    private String normalizePersona(String rawPersona) {
+        String normalized = rawPersona == null ? "" : rawPersona.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "SIGMUND FREUD", "FREUD" -> "FREUD";
+            case "CARL JUNG", "JUNG" -> "JUNG";
+            case "ASTROLOG", "ASTROLOGER", "ASTROLOJI", "ASTROLOGIST" -> "ASTROLOG";
+            default -> throw new ResponseStatusException(BAD_REQUEST, "Desteklenmeyen persona");
+        };
     }
 
     private DreamResponse mapToResponse(Dream dream) {
