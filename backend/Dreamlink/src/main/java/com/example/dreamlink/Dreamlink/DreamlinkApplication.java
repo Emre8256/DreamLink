@@ -6,12 +6,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.data.web.config.EnableSpringDataWebSupport;
 
 import jakarta.annotation.PostConstruct;
 import java.util.TimeZone;
 
 @SpringBootApplication
 @EnableAsync
+@EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
 public class DreamlinkApplication {
 
 	public static void main(String[] args) {

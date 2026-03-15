@@ -34,8 +34,8 @@ app.add_middleware(
 PROCESS_DREAM_RETRY_COUNT = int(os.getenv("PROCESS_DREAM_RETRY_COUNT", "6"))
 PROCESS_DREAM_RETRY_DELAY_SECONDS = float(os.getenv("PROCESS_DREAM_RETRY_DELAY_SECONDS", "0.35"))
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-PRIMARY_MODEL = "openrouter/hunter-alpha"
+OPENROUTER_API_KEY = "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"
+PRIMARY_MODEL = "qwen/qwen3.5-flash-02-23"
 OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "http://localhost")
 OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "Dream-Link Matcher")
 
