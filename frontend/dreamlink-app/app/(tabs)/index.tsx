@@ -1,5 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent, isSpeechRecognitionAvailable } from '../../services/speechRecognition';
 import wsService from '../../services/websocket';
 import { useAppStore } from '../../store/useAppStore';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -375,6 +376,91 @@ const DreamShareForm = ({ onDreamShared, styles }: { onDreamShared: (dream: Drea
   const [isVisibilityDropdownOpen, setIsVisibilityDropdownOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
 
+  // --- Speech Recognition State ---
+  const [isListening, setIsListening] = useState(false);
+  const micPulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Speech recognition event listeners
+  useSpeechRecognitionEvent('start', () => {
+    setIsListening(true);
+    // Start pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(micPulseAnim, { toValue: 1.25, duration: 600, useNativeDriver: true }),
+        Animated.timing(micPulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    ).start();
+  });
+
+  useSpeechRecognitionEvent('end', () => {
+    setIsListening(false);
+    micPulseAnim.stopAnimation();
+    micPulseAnim.setValue(1);
+  });
+
+  useSpeechRecognitionEvent('result', (event: any) => {
+    const transcript = event.results[0]?.transcript ?? '';
+    if (transcript) {
+      if (event.isFinal) {
+        // Final result: append to existing description
+        setDescription(prev => {
+          const separator = prev.trim().length > 0 ? ' ' : '';
+          return prev.trim() + separator + transcript;
+        });
+      } else {
+        // Interim result: show live preview at the end
+        setDescription(prev => {
+          // Remove previous interim text (after the marker) and append new interim
+          const base = prev.replace(/\u200B[\s\S]*$/, '').trim();
+          const separator = base.length > 0 ? ' ' : '';
+          return base + separator + '\u200B' + transcript;
+        });
+      }
+    }
+  });
+
+  useSpeechRecognitionEvent('error', (event: any) => {
+    console.warn('Speech recognition error:', event.error, event.message);
+    setIsListening(false);
+    micPulseAnim.stopAnimation();
+    micPulseAnim.setValue(1);
+    if (event.error === 'not-allowed') {
+      showAlert('İzin Gerekli', 'Sesle yazma için mikrofon ve konuşma tanıma izinlerini vermeniz gerekiyor.');
+    }
+  });
+
+  const handleToggleListening = async () => {
+    if (isListening) {
+      ExpoSpeechRecognitionModule.stop();
+      // Clean up interim markers from description
+      setDescription(prev => prev.replace(/\u200B/g, ''));
+      return;
+    }
+
+    // Check if native module is available
+    if (!isSpeechRecognitionAvailable || !ExpoSpeechRecognitionModule) {
+      showAlert(
+        'Geliştirici Yapısı Gerekli',
+        'Sesle yazma özelliği Expo Go ile çalışmaz. Lütfen uygulamayı development build ile çalıştırın (npx expo run:android veya npx expo run:ios).'
+      );
+      return;
+    }
+
+    // Request permissions
+    const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!result.granted) {
+      showAlert('İzin Verilmedi', 'Sesle yazma özelliğini kullanabilmek için mikrofon ve konuşma tanıma izinlerini vermeniz gerekiyor.');
+      return;
+    }
+
+    // Start speech recognition in Turkish
+    ExpoSpeechRecognitionModule.start({
+      lang: 'tr-TR',
+      interimResults: true,
+      continuous: true,
+    });
+  };
+
   // Close dropdowns helper
   const closeDropdowns = () => {
     setIsThemeDropdownOpen(false);
@@ -383,16 +469,23 @@ const DreamShareForm = ({ onDreamShared, styles }: { onDreamShared: (dream: Drea
   };
 
   const handleShareDream = async () => {
-    if (!title || !description || !selectedTheme) {
+    // Clean up any interim markers before submitting
+    const cleanDescription = description.replace(/\u200B/g, '').trim();
+    if (!title || !cleanDescription || !selectedTheme) {
       showAlert('Hata', 'Lütfen tüm zorunlu alanları doldurun.');
       return;
+    }
+
+    // Stop listening if active
+    if (isListening) {
+      ExpoSpeechRecognitionModule.stop();
     }
 
     setSharing(true);
     try {
       const request: CreateDreamRequest = {
         title,
-        description,
+        description: cleanDescription,
         theme: selectedTheme,
         visibility: selectedVisibility,
         tagNames: []
@@ -437,15 +530,45 @@ const DreamShareForm = ({ onDreamShared, styles }: { onDreamShared: (dream: Drea
         onChangeText={setTitle}
       />
 
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Rüyanı detaylıca anlat..."
-        placeholderTextColor="#C1C8FF"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        textAlignVertical="top"
-      />
+      {/* Description field with voice input button */}
+      <View style={styles.descriptionContainer}>
+        <TextInput
+          style={[styles.input, styles.textArea, styles.descriptionInput]}
+          placeholder={isListening ? 'Dinleniyor... Rüyanı anlat 🎤' : 'Rüyanı detaylıca anlat...'}
+          placeholderTextColor={isListening ? '#7E6BFF' : '#C1C8FF'}
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          textAlignVertical="top"
+        />
+        <Animated.View style={[styles.micButtonContainer, { transform: [{ scale: micPulseAnim }] }]}>
+          <TouchableOpacity
+            style={[
+              styles.micButton,
+              isListening && styles.micButtonActive
+            ]}
+            onPress={handleToggleListening}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isListening ? 'stop' : 'mic'}
+              size={20}
+              color={isListening ? '#fff' : '#7E6BFF'}
+            />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+
+      {/* Listening indicator */}
+      {isListening && (
+        <View style={styles.listeningIndicator}>
+          <View style={styles.listeningDot} />
+          <Text style={styles.listeningText}>Sesini dinliyorum... Konuşmayı bitirince durdur.</Text>
+          <TouchableOpacity onPress={() => ExpoSpeechRecognitionModule.stop()}>
+            <Ionicons name="close-circle" size={20} color="#FF6B6B" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={[styles.dropdownRow, { zIndex: 200, elevation: 30 }]}>
         {/* Theme Dropdown */}
@@ -1262,5 +1385,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#8A8CA8'
-  }
+  },
+
+  // Voice Input Styles
+  descriptionContainer: {
+    position: 'relative',
+  },
+  descriptionInput: {
+    paddingRight: 52,
+  },
+  micButtonContainer: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
+  },
+  micButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(126, 107, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  micButtonActive: {
+    backgroundColor: '#FF6B6B',
+  },
+  listeningIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(126, 107, 255, 0.06)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+    gap: 8,
+  },
+  listeningDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B6B',
+  },
+  listeningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#7E6BFF',
+    fontWeight: '600',
+  },
 });

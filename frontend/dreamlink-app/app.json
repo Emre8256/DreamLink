@@ -32,7 +32,15 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "DreamLink rüyanızı sesle anlatabilmeniz için mikrofona erişim istiyor.",
+          "speechRecognitionPermission": "DreamLink sesinizi metne çevirebilmek için konuşma tanıma erişimi istiyor.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
