@@ -1,7 +1,0 @@
-RESULT name=apple_verify status=0 error=missing_env: APPSTORE_RECEIPT_BASE64,PREMIUM_TEST_JWT skipped=True
-RESULT name=google_verify status=0 error=missing_env: GOOGLE_PURCHASE_TOKEN,GOOGLE_PACKAGE_NAME,PREMIUM_TEST_JWT skipped=True
-RESULT name=apple_verify_duplicate status=0 error=missing_env: APPSTORE_RECEIPT_BASE64,PREMIUM_TEST_JWT skipped=True
-RESULT name=apple_wrong_product status=0 error=missing_env: APPSTORE_RECEIPT_BASE64,PREMIUM_TEST_JWT skipped=True
-RESULT name=google_wrong_package status=0 error=missing_env: GOOGLE_PURCHASE_TOKEN,PREMIUM_TEST_JWT skipped=True
-RESULT name=apple_restore status=0 error=missing_env: APPSTORE_RECEIPT_BASE64,PREMIUM_TEST_JWT skipped=True
-RESULT name=webhook_security status=403 error=WebException skipped=False
