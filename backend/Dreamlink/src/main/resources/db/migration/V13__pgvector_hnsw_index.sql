@@ -7,5 +7,7 @@
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
+ALTER TABLE dreams ADD COLUMN IF NOT EXISTS embedding vector(384);
+
 CREATE INDEX IF NOT EXISTS idx_dreams_embedding_hnsw ON dreams USING hnsw (embedding vector_cosine_ops)
   WITH (m = 16, ef_construction = 64);

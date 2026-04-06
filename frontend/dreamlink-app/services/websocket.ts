@@ -2,7 +2,7 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://172.20.10.3:8081/api';
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8081/api';
 const WS_URL = API_BASE.replace(/\/api$/, '').replace(/^http/, 'http') + '/ws';
 const RECONNECT_DELAY = 5000;
 /** onConnect tetiklendikten sonra STOMP iç state'inin oturması için bekleme süresi (ms). */
