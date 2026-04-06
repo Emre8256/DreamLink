@@ -1,6 +1,7 @@
 package com.example.dreamlink.Dreamlink.repository;
 
 import com.example.dreamlink.Dreamlink.entity.DreamMatch;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -31,6 +32,7 @@ public interface DreamMatchRepository extends JpaRepository<DreamMatch, UUID> {
         )
       ORDER BY dm.score DESC
       """)
+      @EntityGraph(attributePaths = {"matchedDream", "matchedDream.user"})
   List<DreamMatch> findDiscoverMatches(@Param("userId") UUID userId,
       @Param("since") LocalDateTime since);
 

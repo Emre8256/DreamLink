@@ -64,10 +64,15 @@
 - Verification: sadece `clean compile` — migration'ı gerçek DB'ye uygulama, Flyway uygulayacak.
 - Migration'da veri kaybı riski varsa (DROP, CASCADE DELETE) bunu BLOCKED-FINAL logla, atla.
 
-### Token Verimliliği
+### Token Verimliliği (Anti-İsraf Kuralları)
 - microtasks.md'yi session başında BİR KEZ oku, tüm task listesini çıkar. Her task için yeniden okuma.
 - Subagent'a devredilen task'larda ana session dosya okuma yapma — subagent halleder.
 - Geniş kod tabanı araştırması gerekiyorsa Explore subagent kullan.
+- **Dosya okuma sıralaması:** Önce `Grep` ile bul, sonra sadece ilgili satırları `Read` ile oku (offset+limit). Tüm dosyayı okuma.
+- **Aynı dosyayı task içinde 2 kez okuma.** Zaten okuduğunu bellekte tut.
+- **Büyük dosyalarda** (>500 satır) tüm içeriği okuma; sadece ilgili bölümü oku.
+- **Verification çıktısı uzunsa** ilk 30 satır yeterli — tüm stack trace'i okuma.
+- **Yanıt uzunluğunu kıs:** Kod yaz, açıklama yazma. Özet yazma, sadece sonucu logla.
 
 ## 7. Autonomous Task Execution Protocol (AEP)
 

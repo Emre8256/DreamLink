@@ -108,6 +108,8 @@ export interface AuthRequest {
   bio?: string;
   age?: number;
   location?: string;
+  eulaAccepted?: boolean;
+  eulaAcceptedAt?: string;
 }
 
 export interface UpdateProfileRequest {
@@ -751,4 +753,64 @@ export async function deleteConversation(conversationId: string): Promise<void> 
     headers,
   });
   if (!response.ok) throw new Error(`Failed to delete conversation: ${response.status}`);
+}
+
+export async function deleteMyAccount(): Promise<void> {
+  const headers = await getAuthHeaders();
+  const response = await fetchWithAuth(`${BASE_URL}/api/users/me`, {
+    method: 'DELETE',
+    headers,
+  });
+  if (!response.ok) throw new Error(`Failed to delete account: ${response.status}`);
+  await AsyncStorage.removeItem('auth_token');
+}
+
+// ── Blocking System ──────────────────────────────────────────────────────────
+
+export interface BlockedUser {
+  id: string;
+  nickname: string;
+  avatarUrl: string | null;
+  blockedAt: string;
+}
+
+export interface BlockListResponse {
+  blockedUsers: BlockedUser[];
+  totalCount: number;
+}
+
+export async function blockUser(targetUserId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const response = await fetchWithAuth(`${BASE_URL}/api/users/${targetUserId}/block`, {
+    method: 'POST',
+    headers,
+  });
+  if (!response.ok) throw buildApiError(`Failed to block user: ${response.status}`, response.status);
+}
+
+export async function unblockUser(targetUserId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const response = await fetchWithAuth(`${BASE_URL}/api/users/${targetUserId}/unblock`, {
+    method: 'POST',
+    headers,
+  });
+  if (!response.ok) throw buildApiError(`Failed to unblock user: ${response.status}`, response.status);
+}
+
+export async function getBlockedUsers(): Promise<BlockListResponse> {
+  const headers = await getAuthHeaders();
+  const response = await fetchWithAuth(`${BASE_URL}/api/users/blocked`, { headers });
+  if (!response.ok) throw buildApiError(`Failed to fetch blocked users: ${response.status}`, response.status);
+  return response.json();
+}
+
+export async function submitReport(payload: any): Promise<any> {
+  const headers = await getAuthHeaders();
+  const response = await fetchWithAuth(`${BASE_URL}/api/reports`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(`Failed to submit report: ${response.status}`);
+  return response.json();
 }

@@ -1,7 +1,9 @@
 package com.example.dreamlink.Dreamlink.service;
 
 import com.example.dreamlink.Dreamlink.dto.CreateDreamRequest;
+import com.example.dreamlink.Dreamlink.dto.DreamContextItemRecord;
 import com.example.dreamlink.Dreamlink.dto.DreamInterpretRequest;
+import com.example.dreamlink.Dreamlink.dto.DreamInterpretContextRequest;
 import com.example.dreamlink.Dreamlink.dto.DreamInterpretationResponse;
 import com.example.dreamlink.Dreamlink.dto.DreamResponse;
 import com.example.dreamlink.Dreamlink.entity.Dream;
@@ -15,6 +17,7 @@ import com.example.dreamlink.Dreamlink.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -234,11 +237,14 @@ public class DreamService {
                 return mapInterpretation(existing);
             }
 
+                DreamInterpretContextRequest contextRequest = buildInterpretContext(currentUser.getId(), dream.getId());
+
             String content = aiMatcherClientService.requestDreamInterpretation(
                     dream.getTitle(),
                     dream.getDescription(),
                     persona,
-                    zodiacSign);
+                    zodiacSign,
+                    contextRequest);
 
             DreamInterpretation saved = dreamInterpretationRepository.save(
                     DreamInterpretation.builder()
@@ -284,6 +290,20 @@ public class DreamService {
                 interpretation.getZodiacSign(),
                 interpretation.getCreatedAt());
     }
+
+            private DreamInterpretContextRequest buildInterpretContext(UUID userId, UUID currentDreamId) {
+            List<DreamContextItemRecord> contextDreams = dreamRepository
+                .findRecentDreamsForContext(userId, currentDreamId, PageRequest.of(0, 3))
+                .stream()
+                .map(d -> new DreamContextItemRecord(
+                    d.getId(),
+                    d.getTitle(),
+                    d.getDescription(),
+                    d.getCreatedAt()))
+                .toList();
+
+            return new DreamInterpretContextRequest(currentDreamId, contextDreams);
+            }
 
     private String normalizePersona(String rawPersona) {
         String normalized = rawPersona == null ? "" : rawPersona.trim().toUpperCase(Locale.ROOT);

@@ -1,5 +1,6 @@
 package com.example.dreamlink.Dreamlink.service;
 
+import com.example.dreamlink.Dreamlink.dto.DreamInterpretContextRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,6 +10,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
@@ -33,7 +35,13 @@ public class AiMatcherClientService {
         }
     }
 
-    public String requestDreamInterpretation(String title, String description, String persona, String zodiacSign) {
+    public String requestDreamInterpretation(
+            String title,
+            String description,
+            String persona,
+            String zodiacSign,
+            DreamInterpretContextRequest contextRequest
+    ) {
         String normalizedBaseUrl = matcherBaseUrl == null ? "http://127.0.0.1:8000" : matcherBaseUrl.trim();
         normalizedBaseUrl = normalizedBaseUrl.replace("localhost", "127.0.0.1");
         if (normalizedBaseUrl.endsWith("/")) {
@@ -48,7 +56,8 @@ public class AiMatcherClientService {
                     new MatcherInterpretRequest(
                             (title + "\n" + description).trim(),
                             persona,
-                            zodiacSign),
+                        zodiacSign,
+                        toContextTexts(contextRequest)),
                     MatcherInterpretResponse.class);
 
             if (response == null || response.content() == null || response.content().isBlank()) {
@@ -65,7 +74,22 @@ public class AiMatcherClientService {
         }
     }
 
-    private record MatcherInterpretRequest(String dreamText, String persona, String zodiacSign) {
+    private List<String> toContextTexts(DreamInterpretContextRequest contextRequest) {
+        if (contextRequest == null || contextRequest.contextDreams() == null) {
+            return List.of();
+        }
+        return contextRequest.contextDreams().stream()
+                .map(item -> {
+                    String title = item.title() == null ? "" : item.title().trim();
+                    String description = item.description() == null ? "" : item.description().trim();
+                    return (title + " - " + description).trim();
+                })
+                .filter(s -> !s.isBlank())
+                .limit(3)
+                .toList();
+    }
+
+    private record MatcherInterpretRequest(String dreamText, String persona, String zodiacSign, List<String> contextDreams) {
     }
 
     private record MatcherInterpretResponse(String persona, String zodiacSign, String content) {

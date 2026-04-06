@@ -33,6 +33,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -Command \"Write-Host '=== SESSION COST: Run /cost to check token usage ===' -ForegroundColor Yellow\""
+          }
+        ]
+      }
     ]
   },
   "env": {

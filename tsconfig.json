@@ -1,0 +1,8 @@
+{
+  "extends": "./frontend/dreamlink-app/tsconfig.json",
+  "include": [
+    "frontend/dreamlink-app/**/*.ts",
+    "frontend/dreamlink-app/**/*.tsx"
+  ],
+  "exclude": ["**/node_modules", "**/build", "**/dist"]
+}

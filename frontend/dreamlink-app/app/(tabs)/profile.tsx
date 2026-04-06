@@ -1,88 +1,48 @@
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { router, useFocusEffect, useNavigation, type Href } from 'expo-router';
+import React, { useLayoutEffect, useMemo } from 'react';
 import {
-  Ionicons,
-  MaterialCommunityIcons,
-} from '@expo/vector-icons';
-import { useNavigation, router, useFocusEffect, type Href } from 'expo-router';
-import React, { useLayoutEffect } from 'react';
-import {
+  ActivityIndicator,
+  Alert,
   Image,
+  Modal,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { getMyProfile, UserProfileResponse } from '../../services/api';
+import { deleteMyAccount, getMyProfile, type UserProfileResponse } from '../../services/api';
+import { DEFAULT_FEATURES, type SettingItemConfig } from '../../types/navigation';
 
-// 1. Temel ayar öğesi özelliklerini tanımla
-type BaseSettingItem = {
-  title: string;
-  subtitle: string;
-  route?: Href;
-};
-
-// 2. iconType 'ionicons' (veya tanımsız) ise, 'icon' Ionicons'tan gelmeli
-type IoniconSettingItem = BaseSettingItem & {
-  iconType?: 'ionicons';
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-};
-
-// 3. iconType 'material' ise, 'icon' MaterialCommunityIcons'tan gelmeli
-type MaterialSettingItem = BaseSettingItem & {
-  iconType: 'material';
-  icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-};
-
-// 4. Ana tipimiz, bu ikisinin birleşimidir
-type SettingItem = IoniconSettingItem | MaterialSettingItem;
-
-// Ayar menüsü verisi
-const settingsItems: SettingItem[] = [
+const SHOWABLE_SETTINGS: SettingItemConfig[] = [
   {
-    icon: 'person-outline',
-    title: 'Profili Düzenle',
-    subtitle: 'İsim, profil resmi ve bio bilgilerinizi güncelleyin',
-  },
-  {
-    icon: 'time-outline',
-    title: 'Son Rüyalar',
-    subtitle: 'Son girdilerinizi görüntüleyin ve düzenleyin',
-  },
-  {
+    id: 'matches',
+    title: 'Esmeler',
+    subtitle: 'Benzer ruyalari olan kisiler',
     icon: 'heart-outline',
-    title: 'Eşleşmeler',
-    subtitle: 'Benzer rüyaları olan kişiler',
+    iconType: 'ionicons',
+    route: '/(tabs)/matches',
   },
   {
-    icon: 'chatbubble-outline',
+    id: 'messages',
     title: 'Mesajlar',
-    subtitle: 'Sohbetlerinize devam edin',
+    subtitle: 'Sohbetlerine devam et',
+    icon: 'chatbubble-outline',
+    iconType: 'ionicons',
+    route: '/(tabs)/chat',
   },
   {
-    icon: 'tune-variant',
-    iconType: 'material',
-    title: 'Rüya Temaları',
-    subtitle: 'Sembol ve motifleri takip edin',
-  },
-  {
-    icon: 'notifications-outline',
+    id: 'notifications',
     title: 'Bildirimler',
-    subtitle: 'Etiketlemeler, eşleşmeler ve güncellemeler',
+    subtitle: 'Eslesme ve etkileşim guncellemeleri',
+    icon: 'notifications-outline',
+    iconType: 'ionicons',
     route: '/notifications',
-  },
-  {
-    icon: 'shield-checkmark-outline',
-    title: 'Gizlilik',
-    subtitle: 'Hesap görünürlüğü ve güvenlik',
-  },
-  {
-    icon: 'settings-outline',
-    title: 'Uygulama Ayarları',
-    subtitle: 'Görünüm, dil, veri',
   },
 ];
 
@@ -94,47 +54,73 @@ export default function ProfileScreen() {
   const [profile, setProfile] = React.useState<UserProfileResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
 
-  // Çift başlığı engellemek için varsayılan header'ı gizle
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [showFinalDeleteModal, setShowFinalDeleteModal] = React.useState(false);
+  const [confirmText, setConfirmText] = React.useState('');
+  const [deleting, setDeleting] = React.useState(false);
+
   useLayoutEffect(() => {
-    navigation.setOptions({
-      headerShown: false,
-    });
+    navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
   useFocusEffect(
     React.useCallback(() => {
-      loadProfile();
+      let mounted = true;
+      const run = async () => {
+        try {
+          const data = await getMyProfile();
+          if (mounted) {
+            setProfile(data);
+          }
+        } catch (error) {
+          console.error('Profil yuklenirken hata:', error);
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
+        }
+      };
+      run();
+      return () => {
+        mounted = false;
+      };
     }, [])
   );
 
-  const loadProfile = async () => {
-    try {
-      const data = await getMyProfile();
-      setProfile(data);
-    } catch (error) {
-      console.error('Profil yüklenirken hata:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const availableSettings = useMemo(
+    () => SHOWABLE_SETTINGS.filter((item) => DEFAULT_FEATURES[item.id] === 'available' && Boolean(item.route)),
+    []
+  );
 
   const handleLogout = async () => {
     await logout();
   };
 
-  const handleEditProfile = () => {
-    router.push('/edit-profile');
-  };
+  const handleDeleteAccount = async () => {
+    if (confirmText.trim().toUpperCase() !== 'SIL') {
+      Alert.alert('Onay eksik', 'Devam etmek icin SIL yazmalisin.');
+      return;
+    }
 
-  const handleNavigate = (route: Href | undefined) => {
-    if (route) {
-      router.push(route);
+    setDeleting(true);
+    try {
+      await deleteMyAccount();
+      await logout();
+      setShowFinalDeleteModal(false);
+      setShowDeleteModal(false);
+      setConfirmText('');
+      router.replace('/login');
+    } catch (error) {
+      console.error('Hesap silme hatasi:', error);
+      Alert.alert('Hata', 'Hesap silinemedi. Lutfen tekrar dene.');
+    } finally {
+      setDeleting(false);
     }
   };
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#7E6BFF" />
       </View>
     );
@@ -144,46 +130,37 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F9FAFF" translucent />
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Profilim</Text>
-          <Text style={styles.headerSubtitle}>Kişisel bilgileriniz</Text>
-        </View>
-
+      <View style={[styles.header, { paddingTop: insets.top }]}> 
+        <Text style={styles.headerTitle}>Profilim</Text>
+        <Text style={styles.headerSubtitle}>Kisisel bilgilerin</Text>
       </View>
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{
-          paddingBottom: insets.bottom + 20,
-        }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profil Bilgi Kartı */}
         <View style={styles.profileContainer}>
-          <View style={styles.avatarContainer}>
-            <Image
-              source={{ uri: profile?.avatarUrl || 'https://ui-avatars.com/api/?name=' + (profile?.nickname || 'User') + '&background=random' }}
-              style={styles.avatar}
-            />
-          </View>
+          <Image
+            source={{
+              uri:
+                profile?.avatarUrl ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.nickname || 'User')}&background=random`,
+            }}
+            style={styles.avatar}
+          />
+          <Text style={styles.name}>{profile?.nickname || 'Kullanici'}</Text>
+          <Text style={styles.bio}>{profile?.bio || 'Henuz bir biyografi eklenmemis.'}</Text>
 
-          <Text style={styles.name}>{profile?.nickname}</Text>
-          <Text style={styles.bio}>
-            {profile?.bio || 'Henüz bir biyografi eklenmemiş.'}
-          </Text>
-
-          {/* İstatistik Bölümü (3'lü Kart) */}
           <View style={styles.statsContainer}>
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{profile?.dreamCount || 0}</Text>
-              <Text style={styles.statLabel}>Rüya</Text>
+              <Text style={styles.statLabel}>Ruya</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{profile?.followerCount || 0}</Text>
-              <Text style={styles.statLabel}>Takipçi</Text>
+              <Text style={styles.statLabel}>Takipci</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCard}>
@@ -193,89 +170,118 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Ayarlar Menüsü */}
         <View style={styles.settingsContainer}>
           <TouchableOpacity
             style={styles.settingItem}
-            onPress={handleEditProfile}
-            activeOpacity={0.7}
+            onPress={() => router.push('/edit-profile')}
+            activeOpacity={0.8}
           >
-            <Ionicons
-              name="person-outline"
-              size={24}
-              color="#7E6BFF"
-              style={styles.settingIcon}
-            />
-
+            <Ionicons name="person-outline" size={22} color="#7E6BFF" style={styles.settingIcon} />
             <View style={styles.settingTextContainer}>
-              <Text style={styles.settingTitle}>Profili Düzenle</Text>
-              <Text style={styles.settingSubtitle}>İsim, profil resmi ve bio bilgilerinizi güncelleyin</Text>
+              <Text style={styles.settingTitle}>Profili Duzenle</Text>
+              <Text style={styles.settingSubtitle}>Isim, profil resmi ve bio bilgilerini guncelle</Text>
             </View>
-
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color="#C1C8FF"
-            />
+            <Ionicons name="chevron-forward" size={20} color="#C1C8FF" />
           </TouchableOpacity>
 
-          {settingsItems.slice(1).map((item, index) => {
-            const isEnabled = Boolean(item.route);
-            return (
+          {availableSettings.map((item, index) => (
             <TouchableOpacity
-              style={[
-                styles.settingItem,
-                index === settingsItems.length - 2 && styles.lastSettingItem,
-                !isEnabled && styles.settingItemDisabled
-              ]}
-              key={item.title}
-              activeOpacity={isEnabled ? 0.7 : 1}
-              disabled={!isEnabled}
-              onPress={isEnabled ? () => handleNavigate(item.route) : undefined}
+              style={[styles.settingItem, index === availableSettings.length - 1 && styles.lastSettingItem]}
+              key={item.id}
+              activeOpacity={0.8}
+              onPress={() => item.route && router.push(item.route as Href)}
             >
               {item.iconType === 'material' ? (
-                <MaterialCommunityIcons
-                  name={item.icon}
-                  size={24}
-                  color={isEnabled ? '#7E6BFF' : '#B8BEDB'}
-                  style={styles.settingIcon}
-                />
+                <MaterialCommunityIcons name={item.icon as any} size={22} color="#7E6BFF" style={styles.settingIcon} />
               ) : (
-                <Ionicons
-                  name={item.icon}
-                  size={24}
-                  color={isEnabled ? '#7E6BFF' : '#B8BEDB'}
-                  style={styles.settingIcon}
-                />
+                <Ionicons name={item.icon as any} size={22} color="#7E6BFF" style={styles.settingIcon} />
               )}
-
               <View style={styles.settingTextContainer}>
-                <Text style={[styles.settingTitle, !isEnabled && styles.settingTitleDisabled]}>{item.title}</Text>
-                <Text style={[styles.settingSubtitle, !isEnabled && styles.settingSubtitleDisabled]}>{item.subtitle}</Text>
+                <Text style={styles.settingTitle}>{item.title}</Text>
+                <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
               </View>
-
-              {isEnabled ? (
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color="#C1C8FF"
-                />
-              ) : (
-                <View style={styles.comingSoonBadge}>
-                  <Text style={styles.comingSoonText}>Yakinda</Text>
-                </View>
-              )}
+              <Ionicons name="chevron-forward" size={20} color="#C1C8FF" />
             </TouchableOpacity>
-          );
-          })}
+          ))}
         </View>
 
-        {/* Çıkış Butonu */}
-        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7} onPress={handleLogout}>
+        <TouchableOpacity style={styles.dangerButton} activeOpacity={0.8} onPress={() => setShowDeleteModal(true)}>
+          <Ionicons name="trash-outline" size={20} color="#D14343" style={styles.logoutIcon} />
+          <Text style={styles.dangerButtonText}>Hesabimi Sil</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.8} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={22} color="#FF6B6B" style={styles.logoutIcon} />
-          <Text style={styles.logoutText}>Çıkış Yap</Text>
+          <Text style={styles.logoutText}>Cikis Yap</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal transparent visible={showDeleteModal} animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Hesabini silmek istiyor musun?</Text>
+            <Text style={styles.modalText}>
+              Bu islem geri alinamaz. Tum profilin, ruyalarin ve ilgili verilerin kalici olarak silinir.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowDeleteModal(false)}>
+                <Text style={styles.modalCancelText}>Vazgec</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalDanger}
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  setShowFinalDeleteModal(true);
+                }}
+              >
+                <Text style={styles.modalDangerText}>Devam Et</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={showFinalDeleteModal}
+        animationType="fade"
+        onRequestClose={() => setShowFinalDeleteModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Son Onay</Text>
+            <Text style={styles.modalText}>Onayi tamamlamak icin asagiya SIL yaz.</Text>
+            <TextInput
+              style={styles.confirmInput}
+              autoCapitalize="characters"
+              value={confirmText}
+              onChangeText={setConfirmText}
+              editable={!deleting}
+              placeholder="SIL"
+              placeholderTextColor="#A3A8C2"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => {
+                  setShowFinalDeleteModal(false);
+                  setConfirmText('');
+                }}
+                disabled={deleting}
+              >
+                <Text style={styles.modalCancelText}>Vazgec</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalDanger} onPress={handleDeleteAccount} disabled={deleting}>
+                {deleting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalDangerText}>Kalici Olarak Sil</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -285,18 +291,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFF',
   },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#F9FAFF',
     borderBottomWidth: 1,
     borderBottomColor: '#EDF1FF',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerContent: {
-    flex: 1,
   },
   headerTitle: {
     fontSize: 32,
@@ -310,40 +313,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
   },
-
   scrollView: {
     flex: 1,
   },
   profileContainer: {
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 32,
-    paddingBottom: 32,
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 20,
+    paddingTop: 30,
+    paddingBottom: 28,
   },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#F1F3FF',
-  },
-  cameraButton: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#7E6BFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     borderWidth: 3,
     borderColor: '#FFFFFF',
+    backgroundColor: '#F1F3FF',
+    marginBottom: 16,
   },
   name: {
     fontSize: 24,
@@ -355,36 +341,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#5E5E72',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
+    lineHeight: 21,
+    marginBottom: 24,
     paddingHorizontal: 20,
   },
   statsContainer: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     width: '100%',
-    shadowColor: '#7E6BFF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 4,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EDF1FF',
   },
   statCard: {
     flex: 1,
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: '#7E6BFF',
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#8A8CA8',
     marginTop: 4,
     fontWeight: '600',
@@ -392,59 +373,38 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     backgroundColor: '#EDF1FF',
-    marginHorizontal: 16,
+    marginHorizontal: 12,
   },
   settingsContainer: {
     paddingHorizontal: 20,
-    marginTop: 8,
+    marginTop: 4,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 18,
     borderBottomWidth: 1,
     borderBottomColor: '#EDF1FF',
-  },
-  settingItemDisabled: {
-    opacity: 0.7,
   },
   lastSettingItem: {
     borderBottomWidth: 0,
   },
   settingIcon: {
-    marginRight: 16,
+    marginRight: 14,
     width: 24,
   },
   settingTextContainer: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 10,
   },
   settingTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: '#2D2D3A',
-    marginBottom: 4,
-  },
-  settingTitleDisabled: {
-    color: '#A3A8C2',
+    marginBottom: 2,
   },
   settingSubtitle: {
-    fontSize: 14,
-    color: '#8A8CA8',
-    lineHeight: 18,
-  },
-  settingSubtitleDisabled: {
-    color: '#B8BEDB',
-  },
-  comingSoonBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: '#EEF1FF',
-  },
-  comingSoonText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 13,
     color: '#8A8CA8',
   },
   logoutButton: {
@@ -452,18 +412,95 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: 14,
+    paddingVertical: 16,
     marginHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 4,
+    marginTop: 16,
+  },
+  dangerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(209, 67, 67, 0.1)',
+    borderRadius: 14,
+    paddingVertical: 16,
+    marginHorizontal: 20,
+    marginTop: 8,
+  },
+  dangerButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#D14343',
   },
   logoutIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#FF6B6B',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#2D2D3A',
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 14,
+    color: '#5E5E72',
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  confirmInput: {
+    borderWidth: 1,
+    borderColor: '#D9DDF0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#2D2D3A',
+    fontSize: 14,
+    marginBottom: 14,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalCancel: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#EEF1FF',
+  },
+  modalCancelText: {
+    color: '#3B4570',
+    fontWeight: '700',
+  },
+  modalDanger: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#D14343',
+    minWidth: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalDangerText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });

@@ -14,9 +14,21 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.dreamlink.app",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "DreamLink rüyanızı sesle anlatabilmeniz için mikrofona erişim istiyor.",
+        "NSSpeechRecognitionUsageDescription": "DreamLink sesinizi metne çevirebilmek için konuşma tanıma erişimi istiyor."
+      }
     },
     "android": {
+      "package": "com.dreamlink.app",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

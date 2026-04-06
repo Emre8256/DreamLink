@@ -1,25 +1,25 @@
 from __future__ import annotations
 
 import asyncio
-import os
+import random
+
 import traceback
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query
+from .settings import settings
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from openai import OpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import matcher
 from .database import AsyncSessionLocal
 from .models import Dream, User
-
-load_dotenv()
 
 app = FastAPI(title="Dream-Link AI Matcher", version="1.0.0")
 
@@ -31,18 +31,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-PROCESS_DREAM_RETRY_COUNT = int(os.getenv("PROCESS_DREAM_RETRY_COUNT", "6"))
-PROCESS_DREAM_RETRY_DELAY_SECONDS = float(os.getenv("PROCESS_DREAM_RETRY_DELAY_SECONDS", "0.35"))
-
-OPENROUTER_API_KEY = "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"
-PRIMARY_MODEL = "qwen/qwen3.5-flash-02-23"
-OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "http://localhost")
-OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "Dream-Link Matcher")
-
 openrouter_client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY,
-    timeout=60.0,
+    api_key=settings.openrouter_api_key,
+    timeout=settings.openrouter_timeout_seconds,
 )
 
 PERSONA_PROMPTS: dict[str, str] = {
@@ -56,6 +48,59 @@ PERSONA_DISPLAY_NAME: dict[str, str] = {
     "JUNG": "Carl Jung",
     "ASTROLOG": "Astrolog",
 }
+
+
+def _get_trace_id(request: Request) -> str:
+    trace_id = getattr(request.state, "trace_id", None)
+    if isinstance(trace_id, str) and trace_id:
+        return trace_id
+    return str(uuid.uuid4())
+
+
+def _build_error_payload(request: Request, status: int, error: str, message: str) -> PyApiErrorResponse:
+    return PyApiErrorResponse(
+        status=status,
+        error=error,
+        message=message,
+        path=request.url.path,
+        traceId=_get_trace_id(request),
+    )
+
+
+@app.middleware("http")
+async def trace_id_middleware(request: Request, call_next):
+    request.state.trace_id = str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Trace-Id"] = request.state.trace_id
+    return response
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    detail = exc.detail if isinstance(exc.detail, str) else "Request failed"
+    payload = _build_error_payload(request, exc.status_code, "HTTP_ERROR", detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=payload.model_dump(),
+        headers={"X-Trace-Id": payload.traceId},
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    print(f"UNHANDLED EXCEPTION: {exc}")
+    traceback.print_exc()
+    payload = _build_error_payload(
+        request,
+        500,
+        "INTERNAL_SERVER_ERROR",
+        "Beklenmeyen bir sunucu hatasi olustu",
+    )
+    return JSONResponse(
+        status_code=500,
+        content=payload.model_dump(),
+        headers={"X-Trace-Id": payload.traceId},
+    )
 
 
 class ProcessDreamResponse(BaseModel):
@@ -83,12 +128,21 @@ class InterpretDreamRequest(BaseModel):
     dreamText: str
     persona: str
     zodiacSign: str
+    contextDreams: list[str] = Field(default_factory=list)
 
 
 class InterpretDreamResponse(BaseModel):
     persona: str
     zodiacSign: str
     content: str
+
+
+class PyApiErrorResponse(BaseModel):
+    status: int
+    error: str
+    message: str
+    path: str
+    traceId: str
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -154,15 +208,13 @@ async def _fetch_user_dream_vectors(session: AsyncSession, user_id: uuid.UUID) -
 
 
 async def _fetch_user_preference_vectors(session: AsyncSession, user_id: uuid.UUID) -> list[list[float]]:
-    sql = text(
-        """
+    sql = text("""
         SELECT d.embedding
         FROM dream_likes dl
         JOIN dreams d ON d.id = dl.dream_id
         WHERE dl.from_user_id = :user_id
           AND d.embedding IS NOT NULL
-        """
-    )
+        """)
     result = await session.execute(sql, {"user_id": user_id})
     vectors: list[list[float]] = []
     for row in result.all():
@@ -173,14 +225,14 @@ async def _fetch_user_preference_vectors(session: AsyncSession, user_id: uuid.UU
 
 
 async def _get_dream_with_retry(session: AsyncSession, dream_id: uuid.UUID) -> Dream | None:
-    for attempt in range(PROCESS_DREAM_RETRY_COUNT + 1):
+    for attempt in range(settings.process_dream_retry_count + 1):
         result = await session.execute(select(Dream).where(Dream.id == dream_id).limit(1))
         dream = result.scalar_one_or_none()
         if dream is not None:
             return dream
 
-        if attempt < PROCESS_DREAM_RETRY_COUNT:
-            await asyncio.sleep(PROCESS_DREAM_RETRY_DELAY_SECONDS)
+        if attempt < settings.process_dream_retry_count:
+            await asyncio.sleep(settings.process_dream_retry_delay_seconds)
 
     return None
 
@@ -221,6 +273,39 @@ def _build_system_prompt(persona: str, zodiac_sign: str) -> str:
     return template.replace("[ZodiacSign]", zodiac_sign)
 
 
+def _sanitize_context_dreams(context_dreams: list[str]) -> list[str]:
+    # Cap context size to keep prompt predictable.
+    max_context_count = 3
+    max_chars_per_item = 280
+    sanitized: list[str] = []
+    for item in context_dreams[:max_context_count]:
+        clean = item.strip()
+        if not clean:
+            continue
+        sanitized.append(clean[:max_chars_per_item])
+    return sanitized
+
+
+def _build_interpret_user_content(
+    dream_text: str,
+    persona: str,
+    zodiac_sign: str,
+    context_dreams: list[str],
+) -> str:
+    system_prompt = _build_system_prompt(persona, zodiac_sign)
+    context_lines = _sanitize_context_dreams(context_dreams)
+    context_block = "\n".join(f"- {line}" for line in context_lines)
+    return (
+        f"Sistem Talimati: {system_prompt}\n\n"
+        f"Persona: {PERSONA_DISPLAY_NAME[persona]}\n"
+        f"Burc: {zodiac_sign}\n"
+        "Gorev: Asagidaki ruyayi secilen personanin perspektifinden yorumla. "
+        "Yaniti sadece yorum metni olarak ver.\n\n"
+        f"Gecmis Ruyalar Baglami:\n{context_block if context_block else '- Baglam yok'}\n\n"
+        f"Ruya: {dream_text.strip()}"
+    )
+
+
 def _extract_status_code(exc: Exception) -> int | None:
     status_code = getattr(exc, "status_code", None)
     if isinstance(status_code, int):
@@ -235,51 +320,75 @@ def _extract_status_code(exc: Exception) -> int | None:
     return None
 
 
-def _generate_interpretation_with_llm(dream_text: str, persona: str, zodiac_sign: str) -> str:
-    if not OPENROUTER_API_KEY:
-        raise HTTPException(status_code=503, detail="OPENROUTER_API_KEY is missing")
+def _is_retryable_status(status_code: int | None) -> bool:
+    return status_code in {429, 500, 502, 503, 504}
 
-    system_prompt = _build_system_prompt(persona, zodiac_sign)
-    user_content = (
-        f"Sistem Talimati: {system_prompt}\n\n"
-        f"Persona: {PERSONA_DISPLAY_NAME[persona]}\n"
-        f"Burc: {zodiac_sign}\n"
-        "Gorev: Asagidaki ruyayi secilen personanin perspektifinden yorumla. "
-        "Yaniti sadece yorum metni olarak ver.\n\n"
-        f"Ruya: {dream_text.strip()}"
+
+def _calculate_backoff_seconds(attempt_number: int) -> float:
+    policy = settings.llm_retry_policy
+    base_delay = policy.initial_delay_seconds * (policy.exponential_base ** max(0, attempt_number - 1))
+    capped = min(base_delay, policy.max_delay_seconds)
+    jitter = random.uniform(-policy.jitter_factor, policy.jitter_factor) * capped
+    return max(0.0, capped + jitter)
+
+
+def _request_openrouter_completion(user_content: str):
+    return openrouter_client.chat.completions.create(
+        extra_headers={
+            "HTTP-Referer": settings.openrouter_site_url,
+            "X-OpenRouter-Title": settings.openrouter_app_name,
+        },
+        extra_body={"reasoning": {"enabled": True}},
+        model=settings.primary_model,
+        messages=[
+            {
+                "role": "user",
+                "content": user_content,
+            }
+        ],
     )
 
-    try:
-        completion = openrouter_client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": OPENROUTER_SITE_URL,
-                "X-OpenRouter-Title": OPENROUTER_APP_NAME,
-            },
-            extra_body={"reasoning": {"enabled": True}},
-            model=PRIMARY_MODEL,
-            messages=[
-                {
-                    "role": "user",
-                    "content": user_content,
-                }
-            ],
-        )
 
-        if not completion.choices:
-            raise RuntimeError("Empty completion choices")
+async def _generate_interpretation_with_llm(
+    dream_text: str,
+    persona: str,
+    zodiac_sign: str,
+    context_dreams: list[str],
+) -> str:
+    if not settings.openrouter_api_key:
+        raise HTTPException(status_code=503, detail="settings.openrouter_api_key is missing")
 
-        raw_content = completion.choices[0].message.content
-        if not isinstance(raw_content, str):
-            raise RuntimeError("OpenRouter content is not a string")
+    user_content = _build_interpret_user_content(dream_text, persona, zodiac_sign, context_dreams)
+    attempts = max(1, settings.llm_retry_policy.max_attempts)
 
-        content = raw_content.strip()
-        if not content:
-            raise RuntimeError("Empty completion content")
-        return content
-    except Exception as exc:  # pragma: no cover - external API variability
-        status_code = _extract_status_code(exc)
-        print(f"OPENROUTER MODEL HATASI [{PRIMARY_MODEL}] status={status_code}: {str(exc)}")
-        raise HTTPException(status_code=502, detail=f"OpenRouter request failed: {exc}") from exc
+    for attempt in range(1, attempts + 1):
+        try:
+            completion = await asyncio.to_thread(_request_openrouter_completion, user_content)
+
+            if not completion.choices:
+                raise RuntimeError("Empty completion choices")
+
+            raw_content = completion.choices[0].message.content
+            content = _extract_content(raw_content)
+            if not content:
+                raise RuntimeError("Empty completion content")
+            return content
+        except Exception as exc:  # pragma: no cover - external API variability
+            status_code = _extract_status_code(exc)
+            retryable = _is_retryable_status(status_code)
+            last_attempt = attempt >= attempts
+
+            print(
+                f"OPENROUTER HATASI [{settings.primary_model}] "
+                f"attempt={attempt}/{attempts} status={status_code}: {str(exc)}"
+            )
+
+            if not last_attempt and retryable:
+                delay_seconds = _calculate_backoff_seconds(attempt)
+                await asyncio.sleep(delay_seconds)
+                continue
+
+            raise HTTPException(status_code=502, detail=f"OpenRouter request failed: {exc}") from exc
 
 
 @app.post("/process-dream/{dream_id}", response_model=ProcessDreamResponse)
@@ -410,6 +519,7 @@ async def interpret_dream(request: InterpretDreamRequest) -> InterpretDreamRespo
     try:
         dream_text = request.dreamText.strip()
         zodiac_sign = request.zodiacSign.strip()
+        context_dreams = request.contextDreams or []
 
         if not dream_text:
             raise HTTPException(status_code=400, detail="dreamText cannot be empty")
@@ -417,10 +527,11 @@ async def interpret_dream(request: InterpretDreamRequest) -> InterpretDreamRespo
             raise HTTPException(status_code=400, detail="zodiacSign cannot be empty")
 
         persona = _normalize_persona(request.persona)
-        content = _generate_interpretation_with_llm(
+        content = await _generate_interpretation_with_llm(
             dream_text=dream_text,
             persona=persona,
             zodiac_sign=zodiac_sign,
+            context_dreams=context_dreams,
         )
 
         return InterpretDreamResponse(

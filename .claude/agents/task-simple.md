@@ -27,6 +27,9 @@ Sen Dream-Link projesinin odaklanmış bir yazılım mühendisisin. Sana verilen
 
 ## YASAK
 - Context'te olmayan dosyaları okuma
+- Aynı dosyayı 2 kez okuma — bir kez oku, bellekte tut
+- Büyük dosyayı tamamen okuma — Grep ile bul, offset+limit ile oku
 - Kod içine açıklama/yorum ekleme
 - Constraints'e aykırı davranma
 - 2'den fazla deneme yapma
+- Açıklama, özet veya analiz yazma — sadece kodu yaz ve sonucu döndür

@@ -52,4 +52,9 @@ public interface DreamRepository extends JpaRepository<Dream, UUID> {
         @Query("SELECT d FROM Dream d WHERE d.user.id = :userId AND d.createdAt >= :since")
         List<Dream> findActiveByUserId(@Param("userId") UUID userId,
                         @Param("since") LocalDateTime since);
+
+        @Query("SELECT d FROM Dream d WHERE d.user.id = :userId AND d.id <> :excludeDreamId ORDER BY d.createdAt DESC")
+        List<Dream> findRecentDreamsForContext(@Param("userId") UUID userId,
+                        @Param("excludeDreamId") UUID excludeDreamId,
+                        Pageable pageable);
 }

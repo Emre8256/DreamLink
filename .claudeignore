@@ -26,3 +26,25 @@ logs/
 .env
 .env.*
 !.env.example
+
+# Large data files - never read these
+*.json.bak
+*.sql.bak
+*.csv
+*.xlsx
+*.dump
+*.sql.gz
+
+# Test fixtures / mock data
+**/__fixtures__/
+**/testdata/
+**/mock-data/
+
+# Package lock files (huge, never useful)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Gradle / Maven cache
+.gradle/
+backend/Dreamlink/.mvn/

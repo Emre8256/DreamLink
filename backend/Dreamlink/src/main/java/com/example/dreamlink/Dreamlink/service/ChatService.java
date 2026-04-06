@@ -1,5 +1,6 @@
 package com.example.dreamlink.Dreamlink.service;
 
+import com.example.dreamlink.Dreamlink.dto.ConversationCardRecord;
 import com.example.dreamlink.Dreamlink.dto.ConversationResponse;
 import com.example.dreamlink.Dreamlink.dto.MessageResponse;
 import com.example.dreamlink.Dreamlink.dto.UserSummaryDto;
@@ -36,25 +37,13 @@ public class ChatService {
 
     public List<ConversationResponse> getMyConversations() {
         User user = getCurrentUser().orElseThrow(() -> new RuntimeException("Yetkisiz erişim: Kullanıcı bulunamadı"));
-        List<Conversation> conversations = conversationRepository.findMyConversations(user.getId());
+        List<ConversationCardRecord> cards = conversationRepository.findConversationCards(user.getId());
 
-        return conversations.stream().map(c -> {
-
-            User otherUser = c.getUser1().getId().equals(user.getId()) ? c.getUser2() : c.getUser1();
-
-            // Son mesaj
-            String lastMsgContent = "";
-            if (!c.getMessages().isEmpty()) {
-                // Listeyi son mesaj en sonda olacak şekilde yazsın
-                lastMsgContent = c.getMessages().get(c.getMessages().size() - 1).getContent();
-            }
-
-            return new ConversationResponse(
-                    c.getId(),
-                    new UserSummaryDto(otherUser.getId(), otherUser.getNickname(), otherUser.getAvatarUrl()),
-                    lastMsgContent,
-                    c.getLastMessageAt());
-        }).toList();
+        return cards.stream().map(card -> new ConversationResponse(
+                card.conversationId(),
+                new UserSummaryDto(card.otherUserId(), card.otherUserNickname(), card.otherUserAvatarUrl()),
+                card.lastMessage(),
+                card.lastMessageAt())).toList();
     }
 
     public List<MessageResponse> getMessages(UUID conversationId) {

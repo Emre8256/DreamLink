@@ -10,6 +10,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,7 @@ export default function RegisterScreen() {
     const [bio, setBio] = useState('');
     const [age, setAge] = useState('');
     const [location, setLocation] = useState('');
+    const [eulaAccepted, setEulaAccepted] = useState(false);
 
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -62,6 +64,11 @@ export default function RegisterScreen() {
             return;
         }
 
+        if (!eulaAccepted) {
+            setError('Devam etmek için Kullanıcı Sözleşmesi onayı zorunludur.');
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -72,7 +79,9 @@ export default function RegisterScreen() {
                 nickname,
                 bio,
                 age: parsedAge,
-                location: location || undefined
+                location: location || undefined,
+                eulaAccepted: true,
+                eulaAcceptedAt: new Date().toISOString(),
             };
 
             await apiRegister(registerData);
@@ -229,11 +238,32 @@ export default function RegisterScreen() {
 
                         {error && <Text style={styles.errorText}>{error}</Text>}
 
+                        <TouchableOpacity
+                            style={styles.eulaRow}
+                            onPress={() => setEulaAccepted((prev) => !prev)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons
+                                name={eulaAccepted ? 'checkbox' : 'square-outline'}
+                                size={22}
+                                color={eulaAccepted ? '#7E6BFF' : '#8A8CA8'}
+                            />
+                            <Text style={styles.eulaText}>
+                                <Text>Kullanıcı Sözleşmesi'ni kabul ediyorum. </Text>
+                                <Text
+                                    style={styles.eulaLink}
+                                    onPress={() => Linking.openURL('https://dreamlink.app/eula').catch(() => undefined)}
+                                >
+                                    Sözleşmeyi görüntüle
+                                </Text>
+                            </Text>
+                        </TouchableOpacity>
+
                         {/* Register Button */}
                         <TouchableOpacity
                             style={[styles.registerButton, loading && styles.registerButtonDisabled]}
                             onPress={handleRegister}
-                            disabled={loading}
+                            disabled={loading || !eulaAccepted}
                             activeOpacity={0.8}
                         >
                             {loading ? (
@@ -328,6 +358,23 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         fontWeight: '500',
         textAlign: 'center',
+    },
+    eulaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 2,
+        marginBottom: 16,
+        gap: 8,
+    },
+    eulaText: {
+        flex: 1,
+        color: '#5E5E72',
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    eulaLink: {
+        color: '#7E6BFF',
+        fontWeight: '700',
     },
     registerButton: {
         backgroundColor: '#7E6BFF',

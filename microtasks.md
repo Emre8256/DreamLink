@@ -78,7 +78,7 @@
 - Kod içinde hiçbir secret literal bırakma.
 </constraints>
 
-### [SEC-02-PY] Hardcoded Secret Temizliği (Matcher)
+### [SEC-02-PY] Hardcoded Secret Temizliği (Matcher) (tamamlandı)
 <role>Kıdemli Python Mühendisisin. Temiz kod ve Contract-First prensiplerine sıkı sıkıya bağlısın.</role>
 <context>
 - İlgili Dosyalar: C:/octolabs/Dream-Link-main/matcher/app/main.py; C:/octolabs/Dream-Link-main/matcher/app/settings.py; C:/octolabs/Dream-Link-main/matcher/.env.example
@@ -103,7 +103,7 @@
 - Gerçek API key dosyalarda bulunmayacak.
 </constraints>
 
-### [SEC-02-DEVOPS] Secret Scan Pipeline
+### [SEC-02-DEVOPS] Secret Scan Pipeline (tamamlandı)
 <role>Kıdemli Backend Mühendisisin. Temiz kod ve Contract-First prensiplerine sıkı sıkıya bağlısın.</role>
 <context>
 - İlgili Dosyalar: C:/octolabs/Dream-Link-main/scripts/secret_scan.ps1; C:/octolabs/Dream-Link-main/.github/workflows/ci.yml
@@ -612,7 +612,7 @@
 - Soft-delete yasak.
 </constraints>
 
-### [DB-03-PS1] Hesap Silme Doğrulama Scripti
+### [DB-03-PS1] Hesap Silme Doğrulama Scripti (tamamlandı)
 <role>Kıdemli DB Mühendisisin. Temiz kod ve Contract-First prensiplerine sıkı sıkıya bağlısın.</role>
 <context>
 - İlgili Dosyalar: C:/octolabs/Dream-Link-main/scripts/verify_account_delete.ps1

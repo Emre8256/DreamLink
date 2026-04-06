@@ -2,6 +2,7 @@ package com.example.dreamlink.Dreamlink.service;
 
 import com.example.dreamlink.Dreamlink.dto.DiscoverCardResponse;
 import com.example.dreamlink.Dreamlink.dto.DailyPicksResponse;
+import com.example.dreamlink.Dreamlink.dto.DiscoverCardRecord;
 import com.example.dreamlink.Dreamlink.entity.*;
 import com.example.dreamlink.Dreamlink.enums.Entitlement;
 import com.example.dreamlink.Dreamlink.enums.MatchPeriod;
@@ -146,12 +147,12 @@ public class MatchService {
             }
         }
 
-        return bestByUser.values().stream()
+        List<DiscoverCardRecord> cards = bestByUser.values().stream()
                 .limit(30)
                 .map(dm -> {
                     User matchedUser = dm.getMatchedDream().getUser();
                     int count = countByUser.getOrDefault(matchedUser.getId(), 1);
-                    return new DiscoverCardResponse(
+                return new DiscoverCardRecord(
                             dm.getId(),
                             matchedUser.getId(),
                             matchedUser.getNickname(),
@@ -164,7 +165,20 @@ public class MatchService {
                             count,
                             dm.getMatchedAt());
                 })
-                .collect(Collectors.toList());
+                        .toList();
+
+                    return cards.stream().map(card -> new DiscoverCardResponse(
+                        card.matchId(),
+                        card.matchedUserId(),
+                        card.matchedUserNickname(),
+                        card.matchedUserAvatarUrl(),
+                        card.matchedDreamId(),
+                        card.matchedDreamTitle(),
+                        card.matchedDreamDescription(),
+                        card.similarityPercent(),
+                        card.isHot(),
+                        card.matchCount(),
+                        card.matchedAt())).toList();
     }
 
     /**
