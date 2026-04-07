@@ -21,6 +21,24 @@ const buildApiError = (message: string, status: number): ApiError => {
   return error;
 };
 
+let authTokenCache: string | null = null;
+
+export const setAuthToken = (token: string | null) => {
+  authTokenCache = token;
+};
+
+const normalizeToken = (token: string | null) => {
+  if (!token) return null;
+  const trimmed = token.trim();
+  if (trimmed.toLowerCase().startsWith('bearer ')) {
+    return trimmed.slice(7).trim();
+  }
+  if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+};
+
 export type PremiumCtaReason = 'likesYou' | 'dailyPicks' | 'likeLimit' | 'rewind' | 'boost';
 
 export const getPremiumCtaCopy = (reason: PremiumCtaReason) => {
@@ -315,10 +333,12 @@ export function formatRelativeTime(dateString: string): string {
 
 // --- Helper Headers Function ---
 async function getAuthHeaders() {
-  const token = await AsyncStorage.getItem('auth_token');
+  const cached = normalizeToken(authTokenCache);
+  const stored = cached ?? normalizeToken(await AsyncStorage.getItem('auth_token'));
+  if (!cached && stored) authTokenCache = stored;
   return {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(stored ? { 'Authorization': `Bearer ${stored}` } : {}),
   };
 }
 
@@ -329,12 +349,62 @@ export const setUnauthorizedCallback = (callback: () => void) => {
   console.log('API config: Unauthorized callback is set.');
 };
 
+const AUTH_FAILURE_MESSAGES = [
+  'Invalid or expired token',
+  'Token validation failed',
+  'Token does not contain a valid subject',
+  'Empty bearer token',
+  'Authentication required',
+  'Full authentication is required',
+];
+
+const hasAuthHeader = (options?: RequestInit) => {
+  if (!options?.headers) return false;
+  const headers = new Headers(options.headers);
+  return Boolean(headers.get('Authorization') || headers.get('authorization'));
+};
+
+const isAuthFailureMessage = (message: string) =>
+  AUTH_FAILURE_MESSAGES.some(fragment => message.includes(fragment));
+
+const shouldLogoutOnUnauthorized = async (
+  response: Response,
+  requestUrl: string,
+  options?: RequestInit
+) => {
+  if (requestUrl.includes('/api/auth/')) return false;
+  if (!hasAuthHeader(options)) return false;
+
+  const contentType = response.headers.get('content-type') ?? '';
+  let message = '';
+
+  try {
+    if (contentType.includes('application/json')) {
+      const data = await response.clone().json();
+      if (data && typeof data === 'object') {
+        message = String((data as { message?: string; error?: string }).message
+          || (data as { message?: string; error?: string }).error
+          || '');
+      }
+    } else {
+      message = await response.clone().text();
+    }
+  } catch {
+    // Ignore parse errors and fall back to not forcing logout.
+  }
+
+  return message ? isAuthFailureMessage(message) : false;
+};
+
 async function fetchWithAuth(url: string, options?: RequestInit): Promise<Response> {
   const normalizedUrl = url.replace('/api/api/', '/api/');
   const response = await fetch(normalizedUrl, options);
-  if (response.status === 401 && onUnauthorized && !url.includes('/api/auth/')) {
-    console.log('API Request returned 401! Triggering unauthorized callback.');
-    onUnauthorized();
+  if (response.status === 401 && onUnauthorized) {
+    const shouldLogout = await shouldLogoutOnUnauthorized(response, normalizedUrl, options);
+    if (shouldLogout) {
+      console.log('API Request returned 401! Triggering unauthorized callback.');
+      onUnauthorized();
+    }
   }
   return response;
 }

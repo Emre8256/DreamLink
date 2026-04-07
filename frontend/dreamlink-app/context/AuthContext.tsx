@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { jwtDecode } from 'jwt-decode';
-import { setUnauthorizedCallback } from '../services/api';
+import { setAuthToken, setUnauthorizedCallback } from '../services/api';
 
 // --- Types ---
 type User = {
@@ -47,14 +47,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (decoded.exp && decoded.exp < currentTime) {
                         console.log('Token is expired. Logging out.');
                         await AsyncStorage.removeItem('auth_token');
+                        setAuthToken(null);
                         setUser(null);
                     } else {
                         // Token is valid
+                        setAuthToken(token);
                         setUser({ token });
                     }
                 } catch (decodeError) {
                     console.error('Invalid token format:', decodeError);
                     await AsyncStorage.removeItem('auth_token');
+                    setAuthToken(null);
                     setUser(null);
                 }
             }
@@ -68,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const login = async (token: string) => {
         try {
             await AsyncStorage.setItem('auth_token', token);
+            setAuthToken(token);
             setUser({ token });
             // Yönlendirme işlemi _layout.tsx içinde auth state dinlenerek yapılacak
         } catch (error) {
@@ -79,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logout = async () => {
         try {
             await AsyncStorage.removeItem('auth_token');
+            setAuthToken(null);
             setUser(null);
         } catch (error) {
             console.error('Logout hatası:', error);
