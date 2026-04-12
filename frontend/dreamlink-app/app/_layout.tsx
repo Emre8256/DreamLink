@@ -57,12 +57,12 @@ function RootLayoutNav() {
     if (isLoading) return;
     const currentSegment = String(segments[0] ?? '');
 
-    // Check if user is in an authentication screen (login or register)
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+    // Check if user is in an authentication screen (login or register or welcome)
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'welcome';
 
-    if (!user && !inAuthGroup && currentSegment !== 'login') {
-      // Token yok ve auth ekranlarında değilse -> Login'e at
-      router.replace('/login');
+    if (!user && !inAuthGroup && currentSegment !== 'welcome') {
+      // Token yok ve auth ekranlarında değilse -> Welcome'a at
+      router.replace('/welcome');
     } else if (user && inAuthGroup && currentSegment !== '(tabs)') {
       // Token var ve auth ekranlarındaysa -> Ana sayfaya at
       router.replace('/(tabs)');
@@ -82,6 +82,7 @@ function RootLayoutNav() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
           <Stack.Screen name="chatbox" options={{ headerShown: false }} />
+          <Stack.Screen name="welcome" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="register" options={{ headerShown: false }} />
           <Stack.Screen name="edit-profile" options={{ headerShown: false }} />

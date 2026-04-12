@@ -49,7 +49,7 @@ export default function NotificationsScreen() {
       setItems(data);
     } catch (err) {
       console.error('Notifications load error:', err);
-      setError('Bildirimler yüklenemedi.');
+      setError('Failed to load notifications.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -67,7 +67,7 @@ export default function NotificationsScreen() {
       setItems(prev => prev.map(item => ({ ...item, isRead: true })));
     } catch (err) {
       console.error('Mark all read error:', err);
-      setError('Tümünü okundu yapma başarısız.');
+      setError('Failed to mark all as read.');
     }
   };
 
@@ -85,7 +85,7 @@ export default function NotificationsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
           <Ionicons name="arrow-back" size={22} color="#2D2D3A" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bildirimler</Text>
+        <Text style={styles.headerTitle}>Notifications</Text>
         <TouchableOpacity onPress={handleMarkAllRead} style={styles.headerButton}>
           <Ionicons name="checkmark-done-outline" size={22} color="#7E6BFF" />
         </TouchableOpacity>
@@ -95,7 +95,7 @@ export default function NotificationsScreen() {
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity onPress={load} style={styles.retryButton}>
-            <Text style={styles.retryText}>Tekrar dene</Text>
+            <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -122,8 +122,8 @@ export default function NotificationsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="notifications-outline" size={40} color="#C1C8FF" />
-            <Text style={styles.emptyTitle}>Bildirim yok</Text>
-            <Text style={styles.emptySub}>Yeni bildirim geldiğinde burada gorunecek.</Text>
+            <Text style={styles.emptyTitle}>No notifications</Text>
+            <Text style={styles.emptySub}>New notifications will appear here.</Text>
           </View>
         }
         contentContainerStyle={styles.listContent}

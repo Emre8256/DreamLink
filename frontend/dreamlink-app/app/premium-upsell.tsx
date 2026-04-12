@@ -47,18 +47,18 @@ export default function PremiumUpsellScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Premium ile açılanlar</Text>
+        <Text style={styles.cardTitle}>Premium unlocks</Text>
         <View style={styles.row}>
           <Ionicons name="checkmark-circle" size={16} color="#7E6BFF" />
-          <Text style={styles.rowText}>Daha fazla Günlük Seçim</Text>
+          <Text style={styles.rowText}>More Daily Picks</Text>
         </View>
         <View style={styles.row}>
           <Ionicons name="checkmark-circle" size={16} color="#7E6BFF" />
-          <Text style={styles.rowText}>Kim beğendiğini gör</Text>
+          <Text style={styles.rowText}>See who liked you</Text>
         </View>
         <View style={styles.row}>
           <Ionicons name="checkmark-circle" size={16} color="#7E6BFF" />
-          <Text style={styles.rowText}>Daha fazla günlük beğeni hakkı</Text>
+          <Text style={styles.rowText}>More daily likes</Text>
         </View>
       </View>
 
@@ -73,7 +73,7 @@ export default function PremiumUpsellScreen() {
               reason,
             });
             if (Platform.OS === 'web') window.alert('Yak\u0131nda\nPremium sat\u0131n alma ak\u0131\u015f\u0131 demo kapsam\u0131nda aktif de\u011fil.');
-            else Alert.alert('Yakında', 'Premium satın alma akışı demo kapsamında aktif değil.');
+            else Alert.alert('Coming soon', 'Premium purchase flow is disabled in this demo.');
           }}
         >
           <Text style={styles.primaryText}>{primaryLabel}</Text>

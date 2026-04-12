@@ -20,7 +20,8 @@ import {
   Keyboard,
   Dimensions,
   Platform,
-  Animated
+  Animated,
+  ScrollView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,28 +55,40 @@ const showConfirm = (title: string, message: string, onConfirm: () => void) => {
     if (window.confirm(`${title}\n${message}`)) onConfirm();
   } else {
     Alert.alert(title, message, [
-      { text: 'İptal', style: 'cancel' },
+      { text: 'Cancel', style: 'cancel' },
       { text: 'Evet', style: 'destructive', onPress: onConfirm },
     ]);
   }
 };
 
+const getThemeColor = (themeId: string) => {
+  const mapping: Record<string, { bg: string, text: string }> = {
+    'HAPPY': { bg: '#fff7ed', text: '#ea580c' },
+    'LOVE': { bg: '#fdf2f8', text: '#db2777' },
+    'NIGHTMARE': { bg: '#fff1f2', text: '#e11d48' },
+    'LUCID': { bg: '#f5f3ff', text: '#7c3aed' },
+    'SAD': { bg: '#eff6ff', text: '#2563eb' },
+    'ANGRY': { bg: '#fef2f2', text: '#dc2626' },
+  };
+  return mapping[themeId] || { bg: '#f1f5f9', text: '#64748b' };
+};
+
 // --- CONSTANTS ---
 const DREAM_TAGS: { id: DreamTheme; label: string; emoji: string }[] = [
-  { id: 'HAPPY', label: 'Mutlu', emoji: '😊' },
-  { id: 'SAD', label: 'Üzgün', emoji: '😢' },
-  { id: 'NIGHTMARE', label: 'Kabus', emoji: '👻' },
-  { id: 'LOVE', label: 'Aşk', emoji: '❤️' },
-  { id: 'LUCID', label: 'Lüsid', emoji: '✨' },
-  { id: 'ANGRY', label: 'Kızgın', emoji: '😠' },
-  { id: 'EXCITED', label: 'Heyecanlı', emoji: '🎉' },
-  { id: 'CURIOUS', label: 'Meraklı', emoji: '🤔' },
+  { id: 'HAPPY', label: 'Happy', emoji: '😊' },
+  { id: 'SAD', label: 'Sad', emoji: '😢' },
+  { id: 'NIGHTMARE', label: 'Nightmare', emoji: '👻' },
+  { id: 'LOVE', label: 'Love', emoji: '❤️' },
+  { id: 'LUCID', label: 'Lucid', emoji: '✨' },
+  { id: 'ANGRY', label: 'Angry', emoji: '😠' },
+  { id: 'EXCITED', label: 'Excited', emoji: '🎉' },
+  { id: 'CURIOUS', label: 'Curious', emoji: '🤔' },
 ];
 
 const VISIBILITY_OPTIONS = [
-  { id: 'PUBLIC', label: 'Herkese Açık', icon: 'globe-outline' },
-  { id: 'FOLLOWERS_ONLY', label: 'Sadece Takipçiler', icon: 'people-outline' },
-  { id: 'PRIVATE', label: 'Sadece Ben', icon: 'lock-closed-outline' },
+  { id: 'PUBLIC', label: 'Public', icon: 'globe-outline' },
+  { id: 'FOLLOWERS_ONLY', label: 'Followers only', icon: 'people-outline' },
+  { id: 'PRIVATE', label: 'Private', icon: 'lock-closed-outline' },
 ];
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -120,23 +133,15 @@ const DreamCard = React.memo(({ dream }: { dream: DreamResponse }) => {
 
           <View style={styles.userDetails}>
             <Text style={styles.username}>{dream.nickname}</Text>
-            <View style={styles.metaContainer}>
-              <Text style={styles.timestamp}>{formatRelativeTime(dream.createdAt)}</Text>
-              <View style={styles.dotSeparator} />
-              <View style={styles.visibilityBadge}>
-                <Ionicons
-                  name={dream.visibility === 'PUBLIC' ? 'globe-outline' : dream.visibility === 'PRIVATE' ? 'lock-closed-outline' : 'people-outline'}
-                  size={10}
-                  color="#8A8CA8"
-                />
-              </View>
-            </View>
+            <Text style={styles.timestamp}>{formatRelativeTime(dream.createdAt)}</Text>
           </View>
         </View>
 
-        <View style={styles.themeBadge}>
-          <Ionicons name={THEME_TO_ICON[dream.theme] as any} size={14} color="#7E6BFF" />
-          <Text style={styles.themeText}>{THEME_TO_TURKISH[dream.theme]}</Text>
+        <View style={[styles.themeBadge, { backgroundColor: getThemeColor(dream.theme).bg, borderColor: getThemeColor(dream.theme).bg, borderWidth: 1 }]}>
+          <Ionicons name={THEME_TO_ICON[dream.theme] as any} size={12} color={getThemeColor(dream.theme).text} />
+          <Text style={[styles.themeText, { color: getThemeColor(dream.theme).text, marginLeft: 4 }]}>
+             {THEME_TO_TURKISH[dream.theme]}
+          </Text>
         </View>
       </View>
 
@@ -151,8 +156,8 @@ const DreamCard = React.memo(({ dream }: { dream: DreamResponse }) => {
         >
           <Ionicons
             name={isLiked ? "heart" : "heart-outline"}
-            size={22}
-            color={isLiked ? "#FF6B6B" : "#8A8CA8"}
+            size={20}
+            color={isLiked ? "#B3717A" : "#94a3b8"}
           />
           <Text style={[
             styles.interactionCount,
@@ -163,8 +168,13 @@ const DreamCard = React.memo(({ dream }: { dream: DreamResponse }) => {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.interactionButton} activeOpacity={0.7} onPress={handlePress}>
-          <Ionicons name="chatbubble-outline" size={20} color="#8A8CA8" />
+          <Ionicons name="chatbubble-outline" size={20} color="#94a3b8" />
           <Text style={styles.interactionCount}>{dream.commentCount}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.matchButton} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="auto-fix" size={20} color="#B3717A" />
+          <Text style={styles.matchButtonText}>Match</Text>
         </TouchableOpacity>
       </View>
     </Pressable>
@@ -174,14 +184,14 @@ const DreamCard = React.memo(({ dream }: { dream: DreamResponse }) => {
 // --- TODAY DREAM CARD COMPONENT ---
 const VISIBILITY_CYCLE: Array<'PUBLIC' | 'FOLLOWERS_ONLY' | 'PRIVATE'> = ['PUBLIC', 'FOLLOWERS_ONLY', 'PRIVATE'];
 const VISIBILITY_LABEL: Record<string, string> = {
-  PUBLIC: '🌍 Herkese Açık',
-  FOLLOWERS_ONLY: '👥 Takipçilerim',
-  PRIVATE: '🔒 Gizli',
+  PUBLIC: '🌍 Public',
+  FOLLOWERS_ONLY: '👥 Followers',
+  PRIVATE: '🔒 Private',
 };
 const VISIBILITY_NEXT_LABEL: Record<string, string> = {
-  PUBLIC: 'Takipçilerim yap',
-  FOLLOWERS_ONLY: 'Gizli yap',
-  PRIVATE: 'Herkese Açık yap',
+  PUBLIC: 'Make followers-only',
+  FOLLOWERS_ONLY: 'Make private',
+  PRIVATE: 'Make public',
 };
 
 const TodayDreamCard = React.memo(({ dream, onDelete, onVisibilityChange }: {
@@ -190,178 +200,51 @@ const TodayDreamCard = React.memo(({ dream, onDelete, onVisibilityChange }: {
   onVisibilityChange: (updated: DreamResponse) => void;
 }) => {
   const router = useRouter();
-  const scaleAnim = React.useRef(new Animated.Value(0.9)).current;
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const [menuVisible, setMenuVisible] = React.useState(false);
-  const [actionLoading, setActionLoading] = React.useState(false);
 
   const handlePress = () => {
     router.push(`/dream/${dream.id}`);
   };
 
-  React.useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 5,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  const handleDelete = () => {
-    setMenuVisible(false);
-    showConfirm('Rüyayı Sil', 'Bu rüyayı silmek istediğine emin misin?', async () => {
-      try {
-        setActionLoading(true);
-        await deleteDream(dream.id);
-        onDelete(dream.id);
-      } catch (e) {
-        showAlert('Hata', 'Rüya silinemedi.');
-      } finally {
-        setActionLoading(false);
-      }
-    });
-  };
-
-  const handleVisibilityChange = async (newVisibility: 'PUBLIC' | 'FOLLOWERS_ONLY' | 'PRIVATE') => {
-    if (newVisibility === dream.visibility) return; // already selected
-    try {
-      setActionLoading(true);
-      const updated = await updateDreamVisibility(dream.id, newVisibility);
-      onVisibilityChange(updated);
-    } catch (e) {
-      showAlert('Hata', 'Görünürlük güncellenemedi.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   return (
-    <Animated.View style={[styles.todayCardContainer, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-      {/* Action Menu Modal */}
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
-          <View style={styles.menuOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.menuSheet}>
-                <View style={styles.menuHandle} />
-                <Text style={styles.menuTitle}>Rüya Seçenekleri</Text>
-
-                {/* Visibility section */}
-                <Text style={styles.menuSectionLabel}>Görünürlük</Text>
-                {([
-                  { value: 'PUBLIC', icon: 'globe-outline', label: 'Herkese Açık', sub: 'Herkes görebilir' },
-                  { value: 'FOLLOWERS_ONLY', icon: 'people-outline', label: 'Takipçilerim', sub: 'Sadece takipçilerin görebilir' },
-                  { value: 'PRIVATE', icon: 'lock-closed-outline', label: 'Gizli', sub: 'Sadece sen görebilirsin' },
-                ] as const).map((opt) => {
-                  const isSelected = dream.visibility === opt.value;
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      style={styles.menuItem}
-                      onPress={() => handleVisibilityChange(opt.value)}
-                    >
-                      <View style={[styles.menuItemIcon, isSelected && styles.menuItemIconActive]}>
-                        <Ionicons name={opt.icon as any} size={20} color={isSelected ? '#fff' : '#7E6BFF'} />
-                      </View>
-                      <View style={styles.menuItemText}>
-                        <Text style={[styles.menuItemTitle, isSelected && styles.menuItemTitleActive]}>{opt.label}</Text>
-                        <Text style={styles.menuItemSub}>{opt.sub}</Text>
-                      </View>
-                      {/* Radio indicator */}
-                      <View style={[styles.radioOuter, isSelected && styles.radioOuterActive]}>
-                        {isSelected && <View style={styles.radioInner} />}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-
-                <View style={styles.menuDivider} />
-
-                <TouchableOpacity style={[styles.menuItem, styles.menuItemDanger]} onPress={handleDelete}>
-                  <View style={[styles.menuItemIcon, styles.menuItemIconDanger]}>
-                    <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-                  </View>
-                  <View style={styles.menuItemText}>
-                    <Text style={[styles.menuItemTitle, styles.menuItemTitleDanger]}>Rüyayı Sil</Text>
-                    <Text style={styles.menuItemSub}>Bu işlem geri alınamaz</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      <Pressable onPress={handlePress}>
-        <LinearGradient
-          colors={['#E0C3FC', '#8EC5FC']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.todayCardGradient}
-        >
-          <View style={styles.todayCardContent}>
-            <View style={styles.todayHeader}>
-              <View style={styles.todayBadgeContainer}>
-                <Text style={styles.todayBadgeText}>SENİN RÜYAN</Text>
-              </View>
-              <View style={styles.todayMeta}>
-                <Text style={styles.todayTimestamp}>{formatRelativeTime(dream.createdAt)}</Text>
-                <Ionicons
-                  name={dream.visibility === 'PUBLIC' ? 'globe-outline' : dream.visibility === 'PRIVATE' ? 'lock-closed-outline' : 'people-outline'}
-                  size={12}
-                  color="#fff"
-                  style={{ marginLeft: 4 }}
-                />
-                {/* 3-dot menu button */}
-                <TouchableOpacity
-                  onPress={(e) => { e.stopPropagation(); setMenuVisible(true); }}
-                  style={styles.todayMenuButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  {actionLoading
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Ionicons name="ellipsis-vertical" size={18} color="#fff" />
-                  }
-                </TouchableOpacity>
-              </View>
+    <Pressable onPress={handlePress} style={styles.dreamCard}>
+      <View style={styles.dreamHeader}>
+        <View style={styles.userInfo}>
+          {dream.avatarUrl ? (
+            <Image source={{ uri: dream.avatarUrl }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Text style={styles.avatarInitial}>{dream.nickname.charAt(0).toUpperCase()}</Text>
             </View>
+          )}
 
-            <Text style={styles.todayTitle}>{dream.title}</Text>
-            <Text style={styles.todayDescription} numberOfLines={3}>{dream.description}</Text>
-
-            <View style={styles.todayFooter}>
-              <View style={styles.todayThemeBadge}>
-                <Ionicons name={THEME_TO_ICON[dream.theme] as any} size={14} color="#fff" />
-                <Text style={styles.todayThemeText}>{THEME_TO_TURKISH[dream.theme]}</Text>
-              </View>
-              <View style={styles.todayStats}>
-                <View style={styles.todayStatItem}>
-                  <Ionicons name="heart" size={16} color="#fff" />
-                  <Text style={styles.todayStatText}>{dream.likeCount}</Text>
-                </View>
-                <View style={styles.todayStatItem}>
-                  <Ionicons name="chatbubble" size={16} color="#fff" />
-                  <Text style={styles.todayStatText}>{dream.commentCount}</Text>
-                </View>
-              </View>
-            </View>
+          <View style={styles.userDetails}>
+            <Text style={styles.username}>{dream.nickname}</Text>
+            <Text style={styles.timestamp}>{formatRelativeTime(dream.createdAt)}</Text>
           </View>
-        </LinearGradient>
-      </Pressable>
-    </Animated.View>
+        </View>
+
+        <View style={[styles.themeBadge, { backgroundColor: getThemeColor(dream.theme).bg, borderColor: getThemeColor(dream.theme).bg, borderWidth: 1 }]}>
+          <Ionicons name={THEME_TO_ICON[dream.theme] as any} size={12} color={getThemeColor(dream.theme).text} />
+          <Text style={[styles.themeText, { color: getThemeColor(dream.theme).text, marginLeft: 4 }]}>
+             {THEME_TO_TURKISH[dream.theme]}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.dreamTitle}>{dream.title}</Text>
+      <Text style={styles.dreamDescription} numberOfLines={3}>{dream.description}</Text>
+
+      <View style={styles.interactionBar}>
+        <TouchableOpacity style={styles.interactionButton} activeOpacity={0.7} onPress={handlePress}>
+          <Ionicons name="chatbubble-outline" size={20} color="#94a3b8" />
+          <Text style={styles.interactionCount}>{dream.commentCount}</Text>
+        </TouchableOpacity>
+        
+        <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#B3717A', letterSpacing: 0.5 }}>YOUR DREAM</Text>
+        </View>
+      </View>
+    </Pressable>
   );
 });
 
@@ -372,8 +255,6 @@ const DreamShareForm = ({ onDreamShared, styles }: { onDreamShared: (dream: Drea
   const [description, setDescription] = useState('');
   const [selectedTheme, setSelectedTheme] = useState<DreamTheme | null>(null);
   const [selectedVisibility, setSelectedVisibility] = useState<'PUBLIC' | 'FOLLOWERS_ONLY' | 'PRIVATE'>('PUBLIC');
-  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
-  const [isVisibilityDropdownOpen, setIsVisibilityDropdownOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
 
   // --- Speech Recognition State ---
@@ -383,7 +264,6 @@ const DreamShareForm = ({ onDreamShared, styles }: { onDreamShared: (dream: Drea
   // Speech recognition event listeners
   useSpeechRecognitionEvent('start', () => {
     setIsListening(true);
-    // Start pulse animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(micPulseAnim, { toValue: 1.25, duration: 600, useNativeDriver: true }),
@@ -402,15 +282,12 @@ const DreamShareForm = ({ onDreamShared, styles }: { onDreamShared: (dream: Drea
     const transcript = event.results[0]?.transcript ?? '';
     if (transcript) {
       if (event.isFinal) {
-        // Final result: append to existing description
         setDescription(prev => {
           const separator = prev.trim().length > 0 ? ' ' : '';
           return prev.trim() + separator + transcript;
         });
       } else {
-        // Interim result: show live preview at the end
         setDescription(prev => {
-          // Remove previous interim text (after the marker) and append new interim
           const base = prev.replace(/\u200B[\s\S]*$/, '').trim();
           const separator = base.length > 0 ? ' ' : '';
           return base + separator + '\u200B' + transcript;
@@ -420,66 +297,45 @@ const DreamShareForm = ({ onDreamShared, styles }: { onDreamShared: (dream: Drea
   });
 
   useSpeechRecognitionEvent('error', (event: any) => {
-    console.warn('Speech recognition error:', event.error, event.message);
     setIsListening(false);
     micPulseAnim.stopAnimation();
     micPulseAnim.setValue(1);
-    if (event.error === 'not-allowed') {
-      showAlert('İzin Gerekli', 'Sesle yazma için mikrofon ve konuşma tanıma izinlerini vermeniz gerekiyor.');
-    }
   });
 
   const handleToggleListening = async () => {
     if (isListening) {
       ExpoSpeechRecognitionModule.stop();
-      // Clean up interim markers from description
       setDescription(prev => prev.replace(/\u200B/g, ''));
       return;
     }
-
-    // Check if native module is available
     if (!isSpeechRecognitionAvailable || !ExpoSpeechRecognitionModule) {
-      showAlert(
-        'Geliştirici Yapısı Gerekli',
-        'Sesle yazma özelliği Expo Go ile çalışmaz. Lütfen uygulamayı development build ile çalıştırın (npx expo run:android veya npx expo run:ios).'
-      );
+      showAlert('Development build required', 'Voice input does not work in Expo Go.');
       return;
     }
-
-    // Request permissions
     const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!result.granted) {
-      showAlert('İzin Verilmedi', 'Sesle yazma özelliğini kullanabilmek için mikrofon ve konuşma tanıma izinlerini vermeniz gerekiyor.');
+      showAlert('Permission denied', 'Microphone permission is required.');
       return;
     }
-
-    // Start speech recognition in Turkish
-    ExpoSpeechRecognitionModule.start({
-      lang: 'tr-TR',
-      interimResults: true,
-      continuous: true,
-    });
+    ExpoSpeechRecognitionModule.start({ lang: 'tr-TR', interimResults: true, continuous: true });
   };
 
-  // Close dropdowns helper
-  const closeDropdowns = () => {
-    setIsThemeDropdownOpen(false);
-    setIsVisibilityDropdownOpen(false);
-    Keyboard.dismiss();
+  const cycleVisibility = () => {
+    const nextMap: Record<string, 'PUBLIC' | 'FOLLOWERS_ONLY' | 'PRIVATE'> = {
+      'PUBLIC': 'FOLLOWERS_ONLY',
+      'FOLLOWERS_ONLY': 'PRIVATE',
+      'PRIVATE': 'PUBLIC'
+    };
+    setSelectedVisibility(nextMap[selectedVisibility]);
   };
 
   const handleShareDream = async () => {
-    // Clean up any interim markers before submitting
     const cleanDescription = description.replace(/\u200B/g, '').trim();
     if (!title || !cleanDescription || !selectedTheme) {
-      showAlert('Hata', 'Lütfen tüm zorunlu alanları doldurun.');
+      showAlert('Error', 'Please provide a title, story, and theme.');
       return;
     }
-
-    // Stop listening if active
-    if (isListening) {
-      ExpoSpeechRecognitionModule.stop();
-    }
+    if (isListening) ExpoSpeechRecognitionModule.stop();
 
     setSharing(true);
     try {
@@ -490,182 +346,83 @@ const DreamShareForm = ({ onDreamShared, styles }: { onDreamShared: (dream: Drea
         visibility: selectedVisibility,
         tagNames: []
       };
-
       const newDream = await createDream(request);
-
-      // Clean form
       setTitle('');
       setDescription('');
       setSelectedTheme(null);
       setSelectedVisibility('PUBLIC');
-      closeDropdowns();
-
       onDreamShared(newDream);
-      showAlert('Başarılı', 'Rüyan paylaşıldı!');
-
     } catch (error) {
-      console.error('Share error:', error);
-      showAlert('Hata', 'Rüya paylaşılırken bir sorun oluştu.');
+      showAlert('Error', 'Something went wrong while posting your dream.');
     } finally {
       setSharing(false);
     }
   };
 
   return (
-    <View style={[styles.shareCard, { zIndex: 100, elevation: 20 }]}>
-      {/* OVERLAY FOR CLOSING DROPDOWNS */}
-      {(isThemeDropdownOpen || isVisibilityDropdownOpen) && (
-        <TouchableWithoutFeedback onPress={closeDropdowns}>
-          <View style={styles.fullScreenOverlay} />
-        </TouchableWithoutFeedback>
-      )}
-
-      <Text style={styles.shareCardTitle}>Rüyanı Paylaş</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Rüya Başlığı"
-        placeholderTextColor="#C1C8FF"
-        value={title}
-        onChangeText={setTitle}
-      />
-
-      {/* Description field with voice input button */}
-      <View style={styles.descriptionContainer}>
-        <TextInput
-          style={[styles.input, styles.textArea, styles.descriptionInput]}
-          placeholder={isListening ? 'Dinleniyor... Rüyanı anlat 🎤' : 'Rüyanı detaylıca anlat...'}
-          placeholderTextColor={isListening ? '#7E6BFF' : '#C1C8FF'}
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          textAlignVertical="top"
-        />
-        <Animated.View style={[styles.micButtonContainer, { transform: [{ scale: micPulseAnim }] }]}>
-          <TouchableOpacity
-            style={[
-              styles.micButton,
-              isListening && styles.micButtonActive
-            ]}
-            onPress={handleToggleListening}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={isListening ? 'stop' : 'mic'}
-              size={20}
-              color={isListening ? '#fff' : '#7E6BFF'}
+    <View style={styles.shareCard}>
+      <View style={styles.shareInputRow}>
+        <View style={styles.shareAvatarWrapper}>
+           <View style={styles.shareAvatarFallback}>
+             <Ionicons name="person" size={20} color="#B3717A" />
+           </View>
+        </View>
+        
+        <View style={styles.shareInputs}>
+          <TextInput
+            style={styles.shareTitleInput}
+            placeholder="Dream Title..."
+            placeholderTextColor="#94a3b8"
+            value={title}
+            onChangeText={setTitle}
+          />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <TextInput
+              style={styles.shareDescInput}
+              placeholder={isListening ? "Tell your dream 🎤..." : "Write your dream here..."}
+              placeholderTextColor={isListening ? "#B3717A" : "#94a3b8"}
+              value={description}
+              onChangeText={setDescription}
+              multiline
             />
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-
-      {/* Listening indicator */}
-      {isListening && (
-        <View style={styles.listeningIndicator}>
-          <View style={styles.listeningDot} />
-          <Text style={styles.listeningText}>Sesini dinliyorum... Konuşmayı bitirince durdur.</Text>
-          <TouchableOpacity onPress={() => ExpoSpeechRecognitionModule.stop()}>
-            <Ionicons name="close-circle" size={20} color="#FF6B6B" />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <View style={[styles.dropdownRow, { zIndex: 200, elevation: 30 }]}>
-        {/* Theme Dropdown */}
-        <View style={{ flex: 1 }}>
-          <TouchableOpacity
-            style={styles.dropdownButton}
-            onPress={() => {
-              if (isThemeDropdownOpen) {
-                setIsThemeDropdownOpen(false);
-              } else {
-                setIsThemeDropdownOpen(true);
-                setIsVisibilityDropdownOpen(false);
-                Keyboard.dismiss();
-              }
-            }}
-          >
-            <Text style={selectedTheme ? styles.dropdownTextSelected : styles.dropdownTextPlaceholder}>
-              {selectedTheme ? DREAM_TAGS.find(t => t.id === selectedTheme)?.label : 'Tema Seç'}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color="#7E6BFF" />
-          </TouchableOpacity>
-
-          {/* Theme Dropdown Content */}
-          {isThemeDropdownOpen && (
-            <View style={[styles.dropdownContent, { zIndex: 300, elevation: 40 }]}>
-              {DREAM_TAGS.map(tag => (
-                <TouchableOpacity
-                  key={tag.id}
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    setSelectedTheme(tag.id);
-                    setIsThemeDropdownOpen(false);
-                  }}
-                >
-                  <Text style={{ fontSize: 18, marginRight: 8 }}>{tag.emoji}</Text>
-                  <Text style={styles.dropdownItemText}>{tag.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Visibility Dropdown */}
-        <View style={{ flex: 1 }}>
-          <TouchableOpacity
-            style={styles.dropdownButton}
-            onPress={() => {
-              if (isVisibilityDropdownOpen) {
-                setIsVisibilityDropdownOpen(false);
-              } else {
-                setIsVisibilityDropdownOpen(true);
-                setIsThemeDropdownOpen(false);
-                Keyboard.dismiss();
-              }
-            }}
-          >
-            <Ionicons name={VISIBILITY_OPTIONS.find(v => v.id === selectedVisibility)?.icon as any} size={16} color="#7E6BFF" style={{ marginRight: 6 }} />
-            <Text style={styles.dropdownTextSelected}>
-              {VISIBILITY_OPTIONS.find(v => v.id === selectedVisibility)?.label}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Visibility Dropdown Content */}
-          {isVisibilityDropdownOpen && (
-            <View style={[styles.dropdownContent, { zIndex: 300, elevation: 40 }]}>
-              {VISIBILITY_OPTIONS.map(opt => (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    setSelectedVisibility(opt.id as any);
-                    setIsVisibilityDropdownOpen(false);
-                  }}
-                >
-                  <Ionicons name={opt.icon as any} size={18} color="#7E6BFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.dropdownItemText}>{opt.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+            <Animated.View style={[styles.micButtonContainer, { transform: [{ scale: micPulseAnim }] }]}>
+              <TouchableOpacity onPress={handleToggleListening} style={styles.micButton}>
+                <Ionicons name={isListening ? 'stop' : 'mic'} size={18} color={isListening ? '#FF6B6B' : '#94a3b8'} />
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[styles.shareButton, sharing && styles.shareButtonDisabled]}
-        onPress={handleShareDream}
-        disabled={sharing}
-      >
-        {sharing ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <>
-            <Text style={styles.shareButtonText}>Paylaş</Text>
-            <Ionicons name="send" size={16} color="#fff" />
-          </>
-        )}
-      </TouchableOpacity>
+      <View style={styles.shareBottomRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagsContainer}>
+          {DREAM_TAGS.map(tag => {
+            const isSelected = selectedTheme === tag.id;
+            return (
+              <TouchableOpacity
+                key={tag.id}
+                style={[styles.tagPill, isSelected && styles.tagPillSelected]}
+                onPress={() => setSelectedTheme(tag.id)}
+              >
+                <Ionicons name={THEME_TO_ICON[tag.id] as any} size={14} color={isSelected ? '#B3717A' : '#94a3b8'} />
+                <Text style={[styles.tagPillText, isSelected && styles.tagPillTextSelected, { marginLeft: 6 }]}>
+                  {THEME_TO_TURKISH[tag.id]}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
+      </View>
+
+      <View style={styles.shareActionsRow}>
+        <TouchableOpacity style={styles.visibilityToggle} onPress={cycleVisibility}>
+           <Ionicons name={VISIBILITY_OPTIONS.find(v => v.id === selectedVisibility)?.icon as any} size={16} color="#94a3b8" />
+           <Text style={styles.visibilityText}>{VISIBILITY_OPTIONS.find(v => v.id === selectedVisibility)?.label}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.postButton} onPress={handleShareDream} disabled={sharing}>
+          {sharing ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.postButtonText}>Post</Text>}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -787,46 +544,63 @@ export default function HomeScreen() {
       <View style={{ paddingBottom: 24, zIndex: 100, elevation: 100 }}>
         {/* HEADER */}
         <View style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}>
-          <View style={styles.appTitleContainer}>
-            <View style={styles.logoIconContainer}>
-              <MaterialCommunityIcons name="moon-waning-crescent" size={24} color="#7E6BFF" />
-            </View>
-            <Text style={styles.appTitleDark}>Dream</Text>
-            <Text style={styles.appTitleBrand}>Link</Text>
-          </View>
+          {/* Spacer to center the title roughly since notification is on the right */}
+          <View style={{ width: 32 }} />
+          <Text style={styles.appTitleBrand}>DREAM-LINK</Text>
           <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/notifications')}>
-            <Ionicons name="notifications-outline" size={24} color="#7E6BFF" />
+            <Ionicons name="notifications-outline" size={22} color="#94a3b8" />
           </TouchableOpacity>
         </View>
 
-        {/* SHARE FORM */}
-        <DreamShareForm onDreamShared={handleDreamShared} styles={styles} />
+        {/* COMPOSER SECTION */}
+        <View style={styles.composerSection}>
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greetingTitle}>Good morning{currentUserId ? '' : ''}.</Text>
+            <Text style={styles.greetingSubtitle}>What did you dream last night?</Text>
+          </View>
+          <DreamShareForm onDreamShared={handleDreamShared} styles={styles} />
+        </View>
 
-        {/* MY LATEST DREAM */}
+        {/* PINNED TODAY */}
         {myLatestDream && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.todaySectionTitle}>🌙 Bugünkü Rüyam</Text>
+          <View style={styles.pinnedSection}>
+            <View style={styles.pinnedHeaderRow}>
+              <View style={styles.pinnedBadge}>
+                <Ionicons name="pin-outline" size={14} color="#B3717A" />
+                <Text style={styles.pinnedBadgeText}>Pinned • Today</Text>
+              </View>
+            </View>
             <TodayDreamCard
               dream={myLatestDream}
               onDelete={handleMyDreamDeleted}
               onVisibilityChange={handleMyDreamVisibilityChanged}
             />
-            <View style={styles.sectionDivider} />
           </View>
         )}
 
         {/* COMMUNITY FEED TITLE */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>🌍 Topluluk Rüyaları</Text>
+        <View style={styles.communityHeaderSection}>
+          <View style={styles.sectionHeaderFlex}>
+            <Text style={styles.sectionTitle}>COMMUNITY DREAMS</Text>
+            <TouchableOpacity style={styles.filterButton}>
+              <Text style={styles.filterText}>Filter</Text>
+              <Ionicons name="options-outline" size={14} color="#B3717A" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
   );
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={['#e0f2fe', '#f1f5f9', '#fdf2f2']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}
+    >
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#7E6BFF" />
+          <ActivityIndicator size="large" color="#B3717A" />
         </View>
       ) : (
         <FlatList
@@ -838,16 +612,16 @@ export default function HomeScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           extraData={dreams}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#7E6BFF']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#B3717A']} />}
           ListEmptyComponent={
             <View style={[styles.emptyContainer, { zIndex: -1, elevation: -1 }]}>
-              <Ionicons name="moon-outline" size={48} color="#C1C8FF" />
-              <Text style={styles.emptyText}>Henüz paylaşılan rüya yok.</Text>
+              <Ionicons name="moon-outline" size={48} color="#94a3b8" />
+              <Text style={styles.emptyText}>No dreams have been shared yet.</Text>
             </View>
           }
         />
       )}
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -862,57 +636,218 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContent: {
-    paddingBottom: 40
+    paddingBottom: 120, // Increased to avoid floating bottom nav overlap
   },
   headerContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  appTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoIconContainer: {
-    marginRight: 8,
-  },
-  appTitleDark: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#2D2D3A',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
   },
   appTitleBrand: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#7E6BFF',
+    color: '#B3717A',
+    letterSpacing: 4,
+    textAlign: 'center',
+    flex: 1,
   },
   notificationButton: {
-    padding: 8,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    shadowColor: '#7E6BFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    // text-slate-400
+  },
+  greetingContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 16,
+  },
+  greetingTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#1e293b',
+    letterSpacing: -0.5,
+  },
+  greetingSubtitle: {
+    fontSize: 20,
+    fontWeight: '500',
+    color: '#64748b',
+    marginTop: 8,
   },
 
-  // Share Card
+  composerSection: {
+    marginTop: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.20)',
+  },
+
+  pinnedSection: {
+    marginTop: 18,
+    paddingTop: 14,
+    paddingBottom: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.22)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  pinnedHeaderRow: {
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pinnedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(179, 113, 122, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(179, 113, 122, 0.14)',
+  },
+  pinnedBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#B3717A',
+    letterSpacing: 0.3,
+  },
+
+  communityHeaderSection: {
+    marginTop: 24,
+  },
+
+  // Share Card (was in DreamShareForm)
   shareCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
+    backgroundColor: '#ffffff',
+    marginHorizontal: 16,
     borderRadius: 24,
     padding: 20,
-    shadowColor: '#7E6BFF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 5,
-    marginBottom: 24,
-    zIndex: 10,
-    position: 'relative' // Needed for absolute overlay and zIndex
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 32,
+  },
+  shareInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  shareAvatarWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(179, 113, 122, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+    overflow: 'hidden',
+  },
+  shareAvatarFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareInputs: {
+    flex: 1,
+  },
+  shareTitleInput: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    padding: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    marginBottom: 8,
+  },
+  shareDescInput: {
+    fontSize: 15,
+    flex: 1,
+    color: '#475569',
+    minHeight: 40,
+    padding: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+  },
+  shareBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(226, 232, 240, 0.6)',
+    marginTop: 16,
+  },
+  tagsContainer: {
+    gap: 8,
+    paddingRight: 20,
+  },
+  tagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+  },
+  tagPillSelected: {
+    backgroundColor: '#fff',
+    borderColor: '#B3717A',
+  },
+  tagPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  tagPillTextSelected: {
+    color: '#B3717A',
+    fontWeight: '800',
+  },
+  shareActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  visibilityToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  visibilityText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  postButton: {
+    backgroundColor: '#B3717A',
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 24,
+    shadowColor: '#B3717A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  postButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
   },
   fullScreenOverlay: {
     position: 'absolute',
@@ -1028,127 +963,251 @@ const styles = StyleSheet.create({
   // Section Headers
   sectionContainer: {
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 8,
+    marginTop: 8,
     zIndex: 1
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#2D2D3A'
+  sectionHeaderFlex: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  todaySectionTitle: {
-    fontSize: 22,
+  sectionTitle: {
+    fontSize: 12,
     fontWeight: '700',
-    color: '#2D2D3A',
-    marginBottom: 12
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  filterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B3717A',
   },
   sectionDivider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 20,
-    opacity: 0.5
+    display: 'none',
+  },
+
+  // Dream Card
+  dreamCard: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  dreamHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  avatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  avatarInitial: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#B3717A'
+  },
+  userDetails: {
+    marginLeft: 12
+  },
+  username: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b'
+  },
+  timestamp: {
+    fontSize: 11,
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  themeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  themeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  dreamTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1e293b',
+    marginBottom: 8
+  },
+  dreamDescription: {
+    fontSize: 15,
+    color: '#475569',
+    lineHeight: 24,
+    marginBottom: 20
+  },
+  interactionBar: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(226, 232, 240, 0.5)',
+    paddingTop: 16,
+    alignItems: 'center',
+  },
+  interactionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 24,
+    gap: 6
+  },
+  interactionCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94a3b8'
+  },
+  interactionCountActive: {
+    color: '#B3717A'
+  },
+  matchButton: {
+    marginLeft: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  matchButtonText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#B3717A',
   },
 
   // Today Dream Card
   todayCardContainer: {
     marginHorizontal: 0,
-    marginBottom: 8,
-    borderRadius: 24,
-    shadowColor: '#8EC5FC',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
+    marginBottom: 24,
   },
   todayCardGradient: {
     borderRadius: 24,
-    padding: 2.5, // Border width effect
+    padding: 0,
+    borderWidth: 1,
+    borderColor: '#B3717A',
   },
   todayCardContent: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)', // Glassy feel
-    borderRadius: 22,
-    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Glassy feel
+    borderRadius: 24,
+    padding: 24,
   },
   todayHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: 16
   },
   todayBadgeContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(179, 113, 122, 0.1)',
     borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)'
+    borderColor: 'rgba(179, 113, 122, 0.2)'
   },
   todayBadgeText: {
-    color: '#fff',
+    color: '#B3717A',
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   todayMeta: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   todayTimestamp: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600'
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   todayTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#fff',
+    color: '#1e293b',
     marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4
   },
   todayDescription: {
-    fontSize: 15,
-    color: '#fff',
-    lineHeight: 22,
-    marginBottom: 16,
-    opacity: 0.95
+    fontSize: 16,
+    color: '#475569',
+    lineHeight: 24,
+    marginBottom: 20,
   },
   todayFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(226, 232, 240, 0.5)',
+    paddingTop: 16,
   },
   todayThemeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 20,
     gap: 6
   },
   todayThemeText: {
-    color: '#fff',
+    color: '#64748b',
     fontWeight: '700',
-    fontSize: 12
+    fontSize: 11,
+    textTransform: 'uppercase',
   },
   todayStats: {
     flexDirection: 'row',
-    gap: 16
+    gap: 20
   },
   todayStatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4
+    gap: 6
   },
   todayStatText: {
-    color: '#fff',
+    color: '#94a3b8',
     fontWeight: '700',
-    fontSize: 14
+    fontSize: 13
   },
 
-  // Today Card Menu
+  // Menu styles below remain untouched except for color updates if needed, left as is to avoid massive diff
   menuOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -1259,151 +1318,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#7E6BFF',
   },
 
-  // Dream Card
-  dreamCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 20,
-    padding: 16,
-    shadowColor: '#7E6BFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#F9FAFF',
-    zIndex: 1
-  },
-  dreamHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F1F3FF'
-  },
-  avatarPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  avatarInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#7E6BFF'
-  },
-  userDetails: {
-    marginLeft: 12
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#2D2D3A'
-  },
-  metaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#8A8CA8'
-  },
-  dotSeparator: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#D1D5DB',
-    marginHorizontal: 6
-  },
-  visibilityBadge: {
-
-  },
-  themeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(126, 107, 255, 0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4
-  },
-  themeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#7E6BFF'
-  },
-  dreamTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2D2D3A',
-    marginBottom: 8
-  },
-  dreamDescription: {
-    fontSize: 15,
-    color: '#5E5E72',
-    lineHeight: 22,
-    marginBottom: 16
-  },
-  interactionBar: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#F9FAFF',
-    paddingTop: 12
-  },
-  interactionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 24,
-    gap: 6
-  },
-  interactionCount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8A8CA8'
-  },
-  interactionCountActive: {
-    color: '#FF6B6B'
-  },
-
   // Empty State
   emptyContainer: {
     alignItems: 'center',
-    marginTop: 40,
-    opacity: 0.5
+    marginTop: 60,
+    opacity: 0.6
   },
   emptyText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 16,
     fontWeight: '600',
-    color: '#8A8CA8'
+    color: '#94a3b8'
   },
 
   // Voice Input Styles
-  descriptionContainer: {
-    position: 'relative',
-  },
-  descriptionInput: {
-    paddingRight: 52,
-  },
   micButtonContainer: {
-    position: 'absolute',
-    right: 8,
-    top: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 8,
   },
   micButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(126, 107, 255, 0.1)',
+    backgroundColor: 'rgba(179, 113, 122, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1413,12 +1351,12 @@ const styles = StyleSheet.create({
   listeningIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(126, 107, 255, 0.06)',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 12,
-    gap: 8,
+    backgroundColor: 'rgba(179, 113, 122, 0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 12,
+    gap: 10,
   },
   listeningDot: {
     width: 8,
@@ -1429,7 +1367,7 @@ const styles = StyleSheet.create({
   listeningText: {
     flex: 1,
     fontSize: 13,
-    color: '#7E6BFF',
+    color: '#B3717A',
     fontWeight: '600',
   },
 });

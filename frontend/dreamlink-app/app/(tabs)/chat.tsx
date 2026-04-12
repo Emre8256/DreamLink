@@ -4,7 +4,6 @@ import { router, useFocusEffect } from 'expo-router';
 import React, { useState, useEffect, useCallback } from 'react';
 import wsService from '../../services/websocket';
 import { useAppStore } from '../../store/useAppStore';
-// chat.tsx
 import {
   ActivityIndicator,
   FlatList,
@@ -13,7 +12,9 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
+  ScrollView,
   View,
   Alert,
   Platform
@@ -38,21 +39,21 @@ const showConfirm = (title: string, message: string, onConfirm: () => void, onCa
 };
 
 // ─── Avatar Helper ────────────────────────────────────────────────────────────
-const Avatar = ({ url, name, size = 52 }: { url: string | null; name: string; size?: number }) => {
+const Avatar = ({ url, name, size = 56 }: { url: string | null; name: string; size?: number }) => {
   if (url) {
     return (
       <Image
         source={{ uri: url }}
-        style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: '#F1F3FF' }}
+        style={{ width: size, height: size, borderRadius: size / 2, objectFit: 'cover' }}
       />
     );
   }
   return (
     <LinearGradient
-      colors={['#A78BFA', '#7E6BFF']}
+      colors={['#e2e8f0', '#cbd5e1']}
       style={{ width: size, height: size, borderRadius: size / 2, justifyContent: 'center', alignItems: 'center' }}
     >
-      <Text style={{ fontSize: size * 0.38, fontWeight: '800', color: '#fff' }}>
+      <Text style={{ fontSize: size * 0.38, fontWeight: '800', color: '#64748b' }}>
         {name.charAt(0).toUpperCase()}
       </Text>
     </LinearGradient>
@@ -64,12 +65,14 @@ const ChatCard = ({
   item,
   isSelected,
   onSelect,
-  onPress
+  onPress,
+  isUnread = false
 }: {
   item: ConversationResponse;
   isSelected: boolean;
   onSelect: (id: string) => void;
   onPress: () => void;
+  isUnread?: boolean;
 }) => (
   <TouchableOpacity
     style={[styles.card, isSelected && styles.cardSelected]}
@@ -77,7 +80,7 @@ const ChatCard = ({
     onLongPress={() => onSelect(item.id)}
     onPress={() => {
       if (isSelected) {
-        onSelect(item.id); // Toggle selection
+        onSelect(item.id); 
       } else {
         onPress();
       }
@@ -85,31 +88,49 @@ const ChatCard = ({
   >
     {/* Avatar */}
     <View style={styles.avatarWrap}>
-      <Avatar url={item.otherUser.avatarUrl} name={item.otherUser.nickname} size={54} />
+      <Avatar url={item.otherUser.avatarUrl} name={item.otherUser.nickname} size={56} />
     </View>
 
     {/* Text */}
     <View style={styles.cardText}>
       <View style={styles.nameRow}>
-        <Text style={styles.cardName}>{item.otherUser.nickname}</Text>
-        <Text style={styles.cardTime}>
+        <Text style={[styles.cardName, isUnread && { fontWeight: '800' }]} numberOfLines={1}>{item.otherUser.nickname}</Text>
+        <Text style={[styles.cardTime, isUnread && { color: '#B3717A', fontWeight: 'bold' }]}>
           {item.lastMessageAt ? formatRelativeTime(item.lastMessageAt) : 'Yeni'}
         </Text>
       </View>
-      <Text style={styles.cardSub} numberOfLines={1}>
-        {item.lastMessage ? item.lastMessage : '✨ Sohbet başlatıldı'}
-      </Text>
-    </View>
-
-    {/* Chevron or Check */}
-    <View style={styles.chevronWrap}>
-      {isSelected ? (
-        <Ionicons name="checkmark-circle" size={22} color="#7E6BFF" />
-      ) : (
-        <Ionicons name="chevron-forward" size={18} color="#C1C8FF" />
-      )}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={[styles.cardSub, isUnread && { fontWeight: '700', color: '#1e293b' }]} numberOfLines={1}>
+          {item.lastMessage ? item.lastMessage : '✨ Sohbet başlatıldı'}
+        </Text>
+        {isUnread && <View style={styles.unreadDot} />}
+      </View>
     </View>
   </TouchableOpacity>
+);
+
+// ─── New Connections (Mocked) ──────────────────────────────────────────────────
+const MockConnections = [
+  { name: 'Elena', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD0jG3h3Uxa6r85NP9v4xoktztxkUogstTz0lRCss2RGqb4ctNhghaWDrojBj-2KKC6lBta9HbRYc2GnOsQxgAQdd8rg0-zUaOVlW6Lx0n5rwlj5zvXLKmvzsyXsv5eNacu1nFByfk6aEsP21NOdAYXPXedHCpAuEJpWL4bSXNppW90rS_4mOvSEcXgsot5_4oaM3kgln0g9lkrpk1mLEqCDc3NUjfk5myW_Bos0PQszuEOX0viXMYkTWNaQKUO0KxEpmKz7k8-fu4' },
+  { name: 'Marcus', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqVhgvqyvc0MZQf3D105UmM3iSnSwdcWJoieaM6zO1dBVS0wBYgDvfY9Uu510W8mAPYiJ-9vSyXFWBwx57OYnTbfSWyPmlqP4f9Pi0wdp6-jhm8CEnqCqzIHtAM3PJW8-X9ljIWft5U5ruiI4l3Kqsqia59XWJ_6PR7cWWs4qyknHhj5QDc78JAlp04E-xalvU1woWYKWPGbaPVYo20O6YkMPkhVj1c4zeXTftv0tmVJN6DQRHB5xXkr_cM7zQLhwJVAXMWhQujvg' },
+  { name: 'Sienna', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDkNat6SXWFcZUswYPKSLm2zbVCa9JJ-5pcmDqS1E1pl5vEEIyXlSA1NeDvEn8tan1w8GxFXebl5tGzwi3jUC06d_0Ohmq3Rg2W4nulWySHeeY1lE4nO6GPDknVgjTJffEZpt_t7DDJfx_4WEQOOxKra3m2rar0flzkrnurSCCnRTao5QTgnYEa3l1-buoVDyDiwHDYEY7zWv9r69cDSVvyEZmjsZ3SeITaPgGJ6xlxUa1u72tZlRvdr_PC3QJqXu6Vg-MUxx6JXU8' },
+  { name: 'Julian', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCtw7E5YoURAzQp__C3TO0EzBcvT2TDTonkF_XZL9-fVlOS8dY7lHZnlVwiEN2ZqghbmUgSRZIL5ekHTJs5m5bsSDeKM9ZO0JFr9Pi4i3KdLv5i87h5UAZktbsiMPV1RlzQB97jySIEBHAwUrfmy4SL4_G3-3w_G-Qg9K6jM24LHWXe5jInQZ9dmbRGVae3rsIKwj1UyrcIv9BPwunj69UkVjToo-Bj_3P4pXdwoMEB0Z-N0mjjj3tK99il9bk6nOSbhW6gOi7Asd4' },
+];
+
+const NewConnections = () => (
+  <View style={styles.connectionsContainer}>
+    <Text style={styles.connectionsTitle}>NEW CONNECTIONS</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.connectionsScroll}>
+      {MockConnections.map((user, idx) => (
+        <TouchableOpacity key={idx} style={styles.connectionItem} onPress={() => {}}>
+          <View style={styles.connectionAvatarBorder}>
+            <Image source={{ uri: user.img }} style={styles.connectionAvatar} />
+          </View>
+          <Text style={styles.connectionName}>{user.name}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  </View>
 );
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
@@ -121,9 +142,9 @@ const EmptyState = () => (
     >
       <Ionicons name="chatbubbles-outline" size={40} color="#C1C8FF" />
     </LinearGradient>
-    <Text style={styles.emptyTitle}>Henüz sohbet yok</Text>
+    <Text style={styles.emptyTitle}>No chats yet</Text>
     <Text style={styles.emptySub}>
-      Discover'da rüyaları beğen, karşılıklı eşleşince sohbet başlar.
+      Like dreams in Discover—once it’s mutual, you can start chatting here.
     </Text>
   </View>
 );
@@ -134,6 +155,7 @@ export default function ChatScreen() {
   const [conversations, setConversations] = useState<ConversationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -181,8 +203,8 @@ export default function ChatScreen() {
     if (!selectedId) return;
 
     showConfirm(
-      'Sohbeti Sil',
-      'Bu sohbeti ve tüm mesajları silmek istediğine emin misin? Bu işlem geri alınamaz.',
+      'Delete chat',
+      'Are you sure you want to delete this chat and all messages? This action cannot be undone.',
       async () => {
         try {
           setLoading(true);
@@ -190,7 +212,7 @@ export default function ChatScreen() {
           setConversations(prev => prev.filter(c => c.id !== selectedId));
           setSelectedId(null);
         } catch (error) {
-          showAlert('Hata', 'Sohbet silinemedi.');
+          showAlert('Error', 'Failed to delete chat.');
         } finally {
           setLoading(false);
         }
@@ -235,41 +257,45 @@ export default function ChatScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#F9FAFF" translucent />
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <View>
-          <Text style={styles.headerTitle}>Mesajlar</Text>
-          <Text style={styles.headerSub}>Rüya sohbetleri</Text>
-        </View>
-
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <Text style={styles.headerTitle}>Messages</Text>
         {selectedId ? (
-          <TouchableOpacity
-            style={[styles.headerIcon, { backgroundColor: 'rgba(255,107,107,0.1)' }]}
-            onPress={handleDelete}
-          >
-            <Ionicons name="trash-outline" size={22} color="#FF6B6B" />
+          <TouchableOpacity onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={24} color="#B3717A" />
           </TouchableOpacity>
-        ) : (
-          <View style={styles.headerIcon}>
-            <Ionicons name="chatbubble-ellipses-outline" size={22} color="#7E6BFF" />
-          </View>
-        )}
+        ) : null}
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchGlass}>
+          <Ionicons name="search" size={20} color="#94a3b8" style={{ marginLeft: 16 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search conversations..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
       </View>
 
       <FlatList
         data={conversations}
         keyExtractor={i => i.id}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <ChatCard
             item={item}
             isSelected={selectedId === item.id}
             onSelect={handleSelect}
             onPress={() => handlePressCard(item)}
+            isUnread={index < 2} // Mocking unread status for first 2 items to match design
           />
         )}
+        ListHeaderComponent={<NewConnections />}
         ListEmptyComponent={<EmptyState />}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -284,61 +310,114 @@ export default function ChatScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F9FAFF' },
+  root: {
+    flex: 1,
+    backgroundColor: '#f8f6f6', // Light background or gradient
+  },
 
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDF1FF',
-    backgroundColor: '#F9FAFF',
-  },
-  headerTitle: { fontSize: 30, fontWeight: '800', color: '#1A1A2E', letterSpacing: -0.5 },
-  headerSub: { fontSize: 14, color: '#7E6BFF', fontWeight: '600', marginTop: 2 },
-  headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(126,107,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    position: 'relative',
+  },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: '#334155' },
+
+  searchContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  searchGlass: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 12,
+    fontSize: 16,
+    color: '#334155',
   },
 
-  listContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 100 },
+  connectionsContainer: {
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  connectionsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+    letterSpacing: 1.5,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+    textTransform: 'uppercase',
+  },
+  connectionsScroll: {
+    paddingHorizontal: 24,
+    gap: 20,
+  },
+  connectionItem: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  connectionAvatarBorder: {
+    padding: 2,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: '#B3717A',
+    shadowColor: '#B3717A',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  connectionAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  connectionName: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#334155',
+  },
+
+  listContent: { paddingBottom: 120 },
 
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    shadowColor: '#7E6BFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(226, 232, 240, 0.4)', // slate-200/40
   },
   cardSelected: {
-    borderColor: '#7E6BFF',
-    backgroundColor: '#F5F3FF',
+    backgroundColor: 'rgba(179,113,122,0.08)',
   },
 
-  avatarWrap: { position: 'relative', marginRight: 14 },
-
+  avatarWrap: { marginRight: 16 },
 
   cardText: { flex: 1 },
-  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  cardName: { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
-  cardTime: { fontSize: 12, color: '#C1C8FF', fontWeight: '600' },
-  cardSub: { fontSize: 13, color: '#8A8CA8', lineHeight: 18 },
-
-  chevronWrap: { marginLeft: 8 },
+  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 },
+  cardName: { fontSize: 16, fontWeight: '700', color: '#334155' },
+  cardTime: { fontSize: 11, color: '#94a3b8', fontWeight: '500' },
+  cardSub: { fontSize: 14, color: '#94a3b8', paddingRight: 16 },
+  
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#B3717A',
+    marginLeft: 8,
+  },
 
   empty: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 40 },
   emptyIcon: {
@@ -348,9 +427,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(126,107,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#2D2D3A', marginBottom: 8 },
-  emptySub: { fontSize: 14, color: '#8A8CA8', textAlign: 'center', lineHeight: 21 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#334155', marginBottom: 8 },
+  emptySub: { fontSize: 14, color: '#64748b', textAlign: 'center', lineHeight: 21 },
 });

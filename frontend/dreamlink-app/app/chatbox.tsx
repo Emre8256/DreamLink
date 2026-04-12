@@ -1,496 +1,464 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  FlatList,
   Image,
-  Keyboard,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
-import {
-  AvatarProps,
-  Bubble,
-  BubbleProps,
-  Day,
-  DayProps,
-  GiftedChat,
-  IMessage,
-  MessageTextProps,
-  Time,
-  TimeProps
-} from 'react-native-gifted-chat';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import {
   getMessages,
   sendMessage,
   getMyProfile,
   MessageResponse,
-  UserProfileResponse
+  UserProfileResponse,
 } from '../services/api';
 import wsService from '../services/websocket';
 
+/* ─────────────────────────── types ─────────────────────────── */
+interface ChatMessage {
+  id: string;
+  text: string;
+  senderId: string | number;
+  createdAt: Date;
+  pending?: boolean;
+}
+
+/* ─────────────────────── helper ─────────────────────────────── */
 const showAlert = (title: string, message: string) => {
   if (Platform.OS === 'web') window.alert(`${title}\n${message}`);
   else Alert.alert(title, message);
 };
 
-// Özel Başlık
-const CustomHeader = ({ title, avatarUrl }: { title: string; avatarUrl?: string | null }) => {
+const formatTime = (date: Date) =>
+  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+/* ─────────────────────── Header ─────────────────────────────── */
+const CustomHeader = ({
+  title,
+  avatarUrl,
+}: {
+  title: string;
+  avatarUrl?: string | null;
+}) => {
   const router = useRouter();
   return (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-        <Ionicons name="arrow-back" size={26} color="#000" />
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+          <Ionicons name="chevron-back" size={28} color="#64748b" />
+        </TouchableOpacity>
 
-      {avatarUrl ? (
-        <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
-      ) : (
-        <View style={[styles.headerAvatar, { backgroundColor: '#7E6BFF', justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>{title.charAt(0).toUpperCase()}</Text>
-        </View>
-      )}
-
-      <View style={styles.headerUser}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={styles.headerName}>{title}</Text>
-          <Ionicons name="checkmark-circle" size={16} color="#0095F6" style={{ marginLeft: 4 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ position: 'relative' }}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
+            ) : (
+              <View style={[styles.headerAvatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarInitial}>
+                  {title.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={styles.onlineDot} />
+          </View>
+          
+          <View style={{ flexDirection: 'column' }}>
+            <Text style={styles.headerName} numberOfLines={1}>
+              {title}
+            </Text>
+            <Text style={{ fontSize: 12, color: '#64748b' }}>Online</Text>
+          </View>
         </View>
       </View>
 
-      <TouchableOpacity style={styles.headerButton}>
-        <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
+      <TouchableOpacity style={styles.headerBtn}>
+        <Ionicons name="call-outline" size={22} color="#64748b" />
       </TouchableOpacity>
     </View>
   );
 };
 
-// Prop tipleri
-type CustomInputToolbarProps = {
-  onSend: () => void;
-  text: string;
-  onTextChanged: (text: string) => void;
-  onCameraPress: () => void;
-  onImagePress: () => void;
-  onMicPress: () => void;
-  isKeyboardOpen: boolean;
-};
-
-// Özel Mesaj Giriş Çubuğu
-const CustomInputToolbar = ({
-  onSend,
-  text,
-  onTextChanged,
-  onCameraPress,
-  onImagePress,
-  onMicPress,
-  isKeyboardOpen
-}: CustomInputToolbarProps) => {
-
-  const insets = useSafeAreaInsets();
-  const dynamicPaddingBottom = isKeyboardOpen ? 12 : (insets.bottom || 0) + 12;
-
-  return (
-    <View style={[
-      styles.toolbarContainer,
-      { paddingBottom: dynamicPaddingBottom }
-    ]}>
-
-      <TouchableOpacity style={styles.toolbarButton} onPress={onCameraPress}>
-        <Ionicons name="camera-outline" size={26} color="#6e44ff" />
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.toolbarButton} onPress={onImagePress}>
-        <Ionicons name="image-outline" size={26} color="#6e44ff" />
-      </TouchableOpacity>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.toolbarInput}
-          placeholder="Send a message"
-          placeholderTextColor="#8A8A8E"
-          value={text}
-          onChangeText={onTextChanged}
-          multiline
-          maxLength={500}
-        />
-      </View>
-
-      {text.length > 0 ? (
-        <TouchableOpacity style={styles.sendButton} onPress={onSend}>
-          <Ionicons name="arrow-up-circle" size={30} color="#6e44ff" />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={styles.toolbarButton} onPress={onMicPress}>
-          <Ionicons name="mic-outline" size={26} color="#6e44ff" />
-        </TouchableOpacity>
-      )}
+/* ─────────────────── Message Bubble ─────────────────────────── */
+const MessageBubble = ({
+  msg,
+  isMe,
+}: {
+  msg: ChatMessage;
+  isMe: boolean;
+}) => (
+  <View style={[styles.bubbleRow, isMe ? styles.bubbleRowRight : styles.bubbleRowLeft]}>
+    <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
+      <Text style={isMe ? styles.bubbleTextMe : styles.bubbleTextThem}>
+        {msg.text}
+      </Text>
     </View>
-  );
-};
+    <Text style={[styles.time, isMe ? styles.timeMe : styles.timeThem]}>
+      {formatTime(msg.createdAt)}
+    </Text>
+  </View>
+);
 
-// 3. Ana Sohbet Ekranı
+/* ─────────────────── Main Screen ─────────────────────────────── */
 export default function ChatboxScreen() {
   const insets = useSafeAreaInsets();
-  const { conversationId, name, avatar } = useLocalSearchParams<{ conversationId: string; name: string; avatar: string }>();
+  const keyboard = useAnimatedKeyboard();
+  const { conversationId, name, avatar } = useLocalSearchParams<{
+    conversationId: string;
+    name: string;
+    avatar: string;
+  }>();
 
-  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<UserProfileResponse | null>(null);
+  const flatListRef = useRef<FlatList<ChatMessage>>(null);
+  const inputDockAnimatedStyle = useAnimatedStyle(() => {
+    const lift = Math.max(0, keyboard.height.value - insets.bottom);
+    return { transform: [{ translateY: -lift }] };
+  });
 
-  // Load user and messages
+  /* ── Load user + history ── */
   useEffect(() => {
     if (!conversationId) {
-      showAlert('Hata', 'Sohbet bilgisi bulunamadı.');
+      showAlert('Error', 'Chat information could not be found.');
       setLoading(false);
       return;
     }
-    async function init() {
+
+    const init = async () => {
       try {
         const [me, msgs] = await Promise.all([
           getMyProfile(),
-          getMessages(conversationId)
+          getMessages(conversationId),
         ]);
         setCurrentUser(me);
 
-        // Map backend messages to GiftedChat IMessage
-        const giftMessages = msgs.map((m: MessageResponse) => ({
-          _id: m.id,
-          text: m.content,
-          createdAt: new Date(m.sentAt),
-          user: {
-            _id: m.senderId,
-            name: 'User', // We might want to fetch sender details if needed, but for now ID is enough to distinguish
-          }
-        }));
-
-        // GiftedChat expects newest messages first
-        setMessages(giftMessages.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
-
-      } catch (error) {
-        console.error("Failed to load chat", error);
-        showAlert("Hata", "Sohbet yüklenemedi");
+        const formatted: ChatMessage[] = msgs
+          .map((m: MessageResponse) => ({
+            id: m.id,
+            text: m.content,
+            senderId: m.senderId,
+            createdAt: new Date(m.sentAt),
+          }))
+          .sort(
+            (a: ChatMessage, b: ChatMessage) =>
+              a.createdAt.getTime() - b.createdAt.getTime()
+          );
+        setMessages(formatted);
+      } catch (err) {
+        console.error('Failed to load chat', err);
+        showAlert('Error', 'Failed to load chat.');
       } finally {
         setLoading(false);
       }
-    }
+    };
 
-    if (conversationId) {
-      init();
-    }
+    init();
   }, [conversationId]);
 
-  // WebSocket: gerçek zamanlı mesaj alma
+  /* ── WebSocket – incoming messages ── */
   useEffect(() => {
     if (!conversationId || !currentUser) return;
 
-    const destination = `/topic/chat/${conversationId}`;
-
-    wsService.subscribe(destination, (payload: MessageResponse) => {
-      // Kendi gönderdiğimiz mesajı duplicate gösterme
-      // (optimistic UI zaten ekledi, sadece karşı tarafın mesajını göster)
+    const dest = `/topic/chat/${conversationId}`;
+    wsService.subscribe(dest, (payload: MessageResponse) => {
       if (payload.senderId === currentUser.id) return;
-
-      const incoming: IMessage = {
-        _id: payload.id,
-        text: payload.content,
-        createdAt: new Date(payload.sentAt),
-        user: { _id: payload.senderId },
-      };
-      setMessages(prev => GiftedChat.append(prev, [incoming]));
+      setMessages(prev => [
+        ...prev,
+        {
+          id: payload.id,
+          text: payload.content,
+          senderId: payload.senderId,
+          createdAt: new Date(payload.sentAt),
+        },
+      ]);
     });
 
-    return () => {
-      wsService.unsubscribe(destination);
-    };
+    return () => wsService.unsubscribe(dest);
   }, [conversationId, currentUser]);
 
-  // Klavye aç/kapat takibi
+  /* ── Auto-scroll on new message ── */
   useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardOpen(true));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardOpen(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
+    if (messages.length > 0) {
+      setTimeout(
+        () => flatListRef.current?.scrollToEnd({ animated: true }),
+        100
+      );
+    }
+  }, [messages.length]);
 
-  const onSend = useCallback(async () => {
-    if (!inputText.trim() || !conversationId) return;
+  /* ── Send ── */
+  const handleSend = useCallback(async () => {
+    const text = inputText.trim();
+    if (!text || !conversationId) return;
+    setInputText('');
 
-    const textToSend = inputText.trim();
-    setInputText(''); // Clear input immediately for better UX
-
-    // Create optimistic message
-    const tempId = Math.random().toString();
-    const optimisticMessage: IMessage = {
-      _id: tempId,
-      text: textToSend,
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: ChatMessage = {
+      id: tempId,
+      text,
+      senderId: currentUser?.id || 'me',
       createdAt: new Date(),
-      user: { _id: currentUser?.id || 'me' },
+      pending: true,
     };
-
-    setMessages(previousMessages => GiftedChat.append(previousMessages, [optimisticMessage]));
+    setMessages(prev => [...prev, optimistic]);
 
     try {
-      const savedMessage = await sendMessage(conversationId, textToSend);
-      // Replace optimistic message with real one (optional, or just rely on state update/refresh)
-      // Ideally we update the ID from tempId to savedMessage.id
-    } catch (error) {
-      console.error("Failed to send", error);
-      showAlert("Hata", "Mesaj gönderilemedi");
-      // Remove optimistic message on failure (basic implementation)
-      setMessages(previousMessages => previousMessages.filter(m => m._id !== tempId));
-      setInputText(textToSend); // Restore text
+      const saved = await sendMessage(conversationId, text);
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === tempId
+            ? { ...m, id: saved.id, pending: false }
+            : m
+        )
+      );
+    } catch (err) {
+      console.error('Send failed', err);
+      showAlert('Hata', 'Mesaj gönderilemedi.');
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setInputText(text);
     }
   }, [inputText, conversationId, currentUser]);
 
-  const handleCameraPress = () => showAlert('Camera', 'Kamera açılacak');
-  const handleImagePress = () => showAlert('Gallery', 'Galeri açılacak');
-  const handleMicPress = () => showAlert('Mic', 'Ses kaydı başlayacak');
-
-  // Mesaj Balonları
-  const renderBubble = (props: BubbleProps<IMessage>) => (
-    <Bubble
-      {...props}
-      wrapperStyle={{
-        right: {
-          backgroundColor: '#262626',
-          borderRadius: 20,
-          marginBottom: 8,
-        },
-        left: {
-          backgroundColor: '#EFEFEF',
-          borderRadius: 20,
-          marginBottom: 8,
-        },
-      }}
-      renderTicks={() => null}
-    />
-  );
-
-  // Tarih Etiketi
-  const renderDay = (props: DayProps) => (
-    <Day
-      {...props}
-      containerStyle={styles.dayContainer}
-      textStyle={styles.dayText}
-    />
-  );
-
-  // Saati gizle (çünkü renderMessageText içinde hallediyoruz)
-  const renderTime = (props: TimeProps<IMessage>) => (
-    null
-  );
-
-  // Saati ve Metni Birlikte Render Eden Fonksiyon
-  const renderMessageText = (props: MessageTextProps<IMessage>) => {
-    const { currentMessage, position } = props;
-    const isMe = position === 'right';
-
-    return (
-      <View style={[styles.messageTextContainer, isMe && { justifyContent: 'flex-end' }]}>
-        <Text style={isMe ? styles.messageTextRight : styles.messageTextLeft}>
-          {currentMessage.text}
-        </Text>
-        <Time
-          {...props}
-          // containerStyle, 'LeftRightStyle' bekler
-          containerStyle={{
-            left: styles.timeContainer,
-            right: styles.timeContainer,
-          }}
-          // timeTextStyle, 'LeftRightStyle' bekler
-          timeTextStyle={{
-            left: styles.timeTextLeft,
-            right: styles.timeTextRight,
-          }}
-        />
-      </View>
-    );
-  };
-
-  // Avatar
-  const renderAvatar = (props: AvatarProps<IMessage>) => {
-    const { currentMessage } = props;
-    if (!currentMessage?.user || currentMessage.user._id === currentUser?.id || !currentMessage.user.avatar) {
-      return null;
-    }
-    return (
-      <Image
-        source={{ uri: currentMessage.user.avatar as string }}
-        style={styles.avatar}
-      />
-    );
-  };
-
-
+  /* ─────────────────── Render ─────────────────────────────── */
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#6e44ff" />
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color="#7E6BFF" />
       </View>
-    )
+    );
   }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <CustomHeader title={name || 'Sohbet'} avatarUrl={avatar} />
-      {/* Note: We ideally want to pass the other user's name/avatar via params or fetch it from conversation details */}
 
-      <GiftedChat
-        messages={messages}
-        user={{ _id: currentUser?.id || 'me' }} // Current user ID
-
-        renderBubble={renderBubble}
-        renderDay={renderDay}
-        renderTime={renderTime} // null
-        renderAvatar={renderAvatar}
-        renderMessageText={renderMessageText}
-
-        renderInputToolbar={() => (
-          <CustomInputToolbar
-            text={inputText}
-            onTextChanged={setInputText}
-            onSend={onSend}
-            onCameraPress={handleCameraPress}
-            onImagePress={handleImagePress}
-            onMicPress={handleMicPress}
-            isKeyboardOpen={isKeyboardOpen}
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.matchBannerContainer}>
+            <View style={styles.matchBanner}>
+              <Text style={styles.matchBannerTitle}>DREAM LINK ESTABLISHED</Text>
+              <Text style={styles.matchBannerSub}>
+                You connected through <Text style={{fontWeight: 'bold', fontStyle: 'italic'}}>Neon City Flight</Text>
+              </Text>
+            </View>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <MessageBubble
+            msg={item}
+            isMe={item.senderId === currentUser?.id}
           />
         )}
-
-        messagesContainerStyle={{
-          paddingBottom: 20,
-          backgroundColor: '#FFFFFF',
-        }}
-
-        minInputToolbarHeight={76}
+        onContentSizeChange={() =>
+          flatListRef.current?.scrollToEnd({ animated: false })
+        }
       />
+
+      {/* Input Toolbar */}
+      <Animated.View
+        style={[
+          styles.footerContainer,
+          inputDockAnimatedStyle,
+          { paddingBottom: Math.max(insets.bottom + 8, 10) },
+        ]}
+      >
+        <View style={styles.toolbar}>
+          <TouchableOpacity
+            style={styles.toolbarAddBtn}
+            onPress={() => showAlert('Add', 'Menü açılacak')}
+          >
+            <Ionicons name="add" size={24} color="#64748b" />
+          </TouchableOpacity>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Whisper a message..."
+            placeholderTextColor="#94a3b8"
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={500}
+            onSubmitEditing={handleSend}
+            blurOnSubmit={false}
+          />
+
+          <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
+            <Ionicons name="send" size={18} color="#fff" style={{ transform: [{ rotate: '-45deg' }, { translateX: 2 }] }} />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     </View>
   );
 }
 
-// 4. Stiller (Değişiklik yok)
+/* ─────────────────────── Styles ─────────────────────────────── */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F0F7FF',
   },
+  center: { justifyContent: 'center', alignItems: 'center' },
+
+  /* Header */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.6)',
     borderBottomWidth: 1,
-    borderBottomColor: '#EFEFEF',
+    borderBottomColor: 'rgba(255,255,255,0.3)',
   },
-  headerButton: {
-    padding: 8,
+  headerBtn: { padding: 4 },
+  headerAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: '#fff' },
+  avatarPlaceholder: {
+    backgroundColor: '#B3717A',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  headerAvatar: {
+  avatarInitial: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    backgroundColor: '#4ade80',
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  headerName: { fontSize: 16, fontWeight: '700', color: '#1e293b', lineHeight: 20 },
+
+  /* Match Banner */
+  matchBannerContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  matchBanner: {
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    maxWidth: '85%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(179, 113, 122, 0.3)',
+  },
+  matchBannerTitle: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748b',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  matchBannerSub: {
+    fontSize: 13,
+    color: '#475569',
+    textAlign: 'center',
+  },
+
+  /* List */
+  listContent: { paddingHorizontal: 16, paddingVertical: 16 },
+
+  /* Bubbles */
+  bubbleRow: { flexDirection: 'column', marginVertical: 6 },
+  bubbleRowRight: { alignItems: 'flex-end' },
+  bubbleRowLeft: { alignItems: 'flex-start' },
+  bubble: {
+    maxWidth: '75%',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  bubbleMe: {
+    backgroundColor: '#B3717A',
+    borderBottomRightRadius: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  bubbleThem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  bubbleTextMe: { color: '#fff', fontSize: 15, lineHeight: 21 },
+  bubbleTextThem: { color: '#334155', fontSize: 15, lineHeight: 21 },
+  time: { fontSize: 10, marginTop: 4 },
+  timeMe: { color: '#94a3b8', marginRight: 4, textAlign: 'right' },
+  timeThem: { color: '#94a3b8', marginLeft: 4, textAlign: 'left' },
+
+  /* Footer & Toolbar */
+  footerContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    backgroundColor: 'transparent',
+  },
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  toolbarAddBtn: {
     width: 36,
     height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 18,
-    marginHorizontal: 8,
   },
-  headerUser: {
+  input: {
     flex: 1,
-  },
-  headerName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000000',
-  },
-  dayContainer: {
-    alignSelf: 'center',
-    marginVertical: 16,
-  },
-  dayText: {
-    color: '#8A8A8E',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 8,
-  },
-  messageTextContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-    flexWrap: 'nowrap',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  messageTextRight: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    lineHeight: 20,
-    flexShrink: 1,
-  },
-  messageTextLeft: {
-    color: '#000000',
-    fontSize: 15,
-    lineHeight: 20,
-    flexShrink: 1,
-  },
-  timeContainer: {
-    marginLeft: 8,
-    marginRight: 0,
-    marginBottom: 0,
-  },
-  timeTextRight: {
-    fontSize: 10,
-    color: '#FFFFFF99', // Yarı şeffaf beyaz
-  },
-  timeTextLeft: {
-    fontSize: 10,
-    color: '#00000099', // Yarı şeffaf siyah (gri)
-  },
-  toolbarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#EFEFEF',
-    minHeight: 76,
-  },
-  inputContainer: {
-    flex: 1,
-    marginHorizontal: 8,
-  },
-  toolbarInput: {
-    backgroundColor: '#F0F2F5',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: '#000000',
+    backgroundColor: 'transparent',
+    paddingHorizontal: 8,
+    fontSize: 14,
+    color: '#334155',
     maxHeight: 100,
+    minHeight: 36,
+    textAlignVertical: 'center',
   },
-  toolbarButton: {
+  sendBtn: {
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 2,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
+    backgroundColor: '#B3717A',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
 });

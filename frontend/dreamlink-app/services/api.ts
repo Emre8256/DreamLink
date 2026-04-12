@@ -3,7 +3,15 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8081/api';
+const normalizeBaseUrl = (value: string) => {
+  // Accept both "http://host:port" and "http://host:port/api"
+  // since call sites append "/api/..." already.
+  const trimmed = value.trim().replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
+};
+
+const RAW_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8081';
+const BASE_URL = normalizeBaseUrl(RAW_BASE_URL);
 
 if (!BASE_URL) {
   throw new Error(
@@ -45,39 +53,39 @@ export const getPremiumCtaCopy = (reason: PremiumCtaReason) => {
   switch (reason) {
     case 'likesYou':
       return {
-        title: 'Premium gerekli',
-        message: 'Beni Beğenenler Premium özelliğidir. Premium ile kimlerin seni beğendiğini gör.',
-        ctaLabel: "Premium'a geç",
-        cancelLabel: 'Kapat',
+        title: 'Premium required',
+        message: 'Likes You is a Premium feature. Upgrade to see who liked you.',
+        ctaLabel: 'Upgrade to Premium',
+        cancelLabel: 'Close',
       };
     case 'dailyPicks':
       return {
-        title: 'Premium gerekli',
-        message: 'Günün Seçimleri için Premium ile daha fazla kart açılır.',
-        ctaLabel: "Premium'a geç",
-        cancelLabel: 'Kapat',
+        title: 'Premium required',
+        message: 'Unlock more Daily Picks with Premium.',
+        ctaLabel: 'Upgrade to Premium',
+        cancelLabel: 'Close',
       };
     case 'likeLimit':
     case 'rewind':
       return {
-        title: 'Premium gerekli',
-        message: 'Rewind ozelligi Premium icindir. Premium ile son atlamayi geri al.',
-        ctaLabel: "Premium'a gec",
-        cancelLabel: 'Kapat',
+        title: 'Premium required',
+        message: 'Rewind is a Premium feature. Upgrade to undo your last swipe.',
+        ctaLabel: 'Upgrade to Premium',
+        cancelLabel: 'Close',
       };
     case 'boost':
       return {
-        title: 'Premium gerekli',
-        message: 'Boost ozelligi Premium icindir. Boost etkisi yakinda aktif olacak.',
-        ctaLabel: "Premium'a gec",
-        cancelLabel: 'Kapat',
+        title: 'Premium required',
+        message: 'Boost is a Premium feature. Upgrade to activate Boost.',
+        ctaLabel: 'Upgrade to Premium',
+        cancelLabel: 'Close',
       };
     default:
       return {
-        title: 'Premium gerekli',
-        message: 'Günlük beğeni limiti doldu. Premium ile daha fazla beğeni kullan.',
-        ctaLabel: "Premium'a geç",
-        cancelLabel: 'Kapat',
+        title: 'Premium required',
+        message: 'You have reached your daily like limit. Upgrade for more likes.',
+        ctaLabel: 'Upgrade to Premium',
+        cancelLabel: 'Close',
       };
   }
 };
@@ -135,6 +143,7 @@ export interface UpdateProfileRequest {
   bio?: string;
   age?: number;
   location?: string;
+  avatarUrl?: string | null;
 }
 
 export interface UserProfileResponse {
@@ -285,14 +294,14 @@ export interface CreateDreamRequest {
 
 // --- Theme Mappings ---
 export const THEME_TO_TURKISH: Record<DreamTheme, string> = {
-  HAPPY: 'Mutlu',
-  SAD: 'Üzgün',
-  NIGHTMARE: 'Kabus',
-  LOVE: 'Aşk',
-  LUCID: 'Lüsid',
-  ANGRY: 'Kızgın',
-  EXCITED: 'Heyecanlı',
-  CURIOUS: 'Meraklı',
+  HAPPY: 'Happy',
+  SAD: 'Sad',
+  NIGHTMARE: 'Nightmare',
+  LOVE: 'Love',
+  LUCID: 'Lucid',
+  ANGRY: 'Angry',
+  EXCITED: 'Excited',
+  CURIOUS: 'Curious',
 };
 
 export const THEME_TO_ICON: Record<DreamTheme, string> = {
@@ -318,15 +327,15 @@ export function formatRelativeTime(dateString: string): string {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffWeeks = Math.floor(diffDays / 7);
 
-  if (diffMins < 1) return 'Şimdi';
-  if (diffMins < 60) return `${diffMins} dk önce`;
-  if (diffHours < 24) return `${diffHours} saat önce`;
-  if (diffDays === 1) return 'Dün';
-  if (diffDays < 7) return `${diffDays} gün önce`;
-  if (diffWeeks < 5) return `${diffWeeks} hafta önce`;
-  return date.toLocaleDateString('tr-TR', {
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffWeeks < 5) return `${diffWeeks}w ago`;
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
     day: '2-digit',
-    month: '2-digit',
     year: 'numeric',
   });
 }

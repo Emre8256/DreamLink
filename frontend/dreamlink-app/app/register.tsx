@@ -1,22 +1,16 @@
-
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Linking,
+    View, Text, TextInput, TouchableOpacity, StyleSheet,
+    ActivityIndicator, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Linking, Image
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { register as apiRegister, login as apiLogin, AuthRequest } from '../services/api';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width, height } = Dimensions.get('window');
 
 const resolveRegisterError = (err: unknown, fallback: string) => {
     if (err && typeof err === 'object') {
@@ -47,7 +41,6 @@ export default function RegisterScreen() {
     const handleRegister = async () => {
         setError(null);
 
-        // Basic Validation
         if (!email || !password || !nickname || !age) {
             setError('Lütfen zorunlu alanları doldurunuz.');
             return;
@@ -72,7 +65,6 @@ export default function RegisterScreen() {
         setLoading(true);
 
         try {
-            // 1. Register API Call
             const registerData: AuthRequest = {
                 email,
                 password,
@@ -85,13 +77,8 @@ export default function RegisterScreen() {
             };
 
             await apiRegister(registerData);
-
-            // 2. Auto Login after Registration
             const token = await apiLogin({ email, password });
-
-            // 3. Save Token & Redirect (handled by context)
             await login(token);
-
         } catch (err: any) {
             console.error('Register Error:', err);
             setError(resolveRegisterError(err, 'Kayıt işlemi başarısız. Bilgilerinizi kontrol edin veya daha sonra tekrar deneyin.'));
@@ -104,220 +91,275 @@ export default function RegisterScreen() {
         if (router.canGoBack()) {
             router.back();
         } else {
-            router.replace('/login');
+            router.replace('/welcome');
         }
     };
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
-        >
-            <ScrollView
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }
-                ]}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-            >
+        <View style={styles.container}>
+            {/* Background Layer */}
+            <View style={StyleSheet.absoluteFill}>
+                <Image 
+                    source={{ uri: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop' }}
+                    style={styles.backgroundImage}
+                    resizeMode="cover"
+                />
+                <LinearGradient
+                    colors={['rgba(10, 7, 5, 0.7)', 'rgba(10, 7, 5, 0.98)']}
+                    style={StyleSheet.absoluteFill}
+                />
+            </View>
 
-                    {/* Back Button */}
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+
+            <ScrollView 
+               contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top, paddingBottom: Platform.OS === 'ios' ? insets.bottom : 24 }}
+               keyboardShouldPersistTaps="handled"
+               showsVerticalScrollIndicator={false}
+            >
+                {/* Top Bar */}
+                <View style={styles.topBar}>
                     <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-                        <Ionicons name="arrow-back" size={24} color="#2D2D3A" />
+                        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.topBarTitle}>DREAM-LINK</Text>
+                    <View style={styles.backButtonPlaceholder} />
+                </View>
+
+                {/* Header Content */}
+                <View style={styles.headerContainer}>
+                    <Text style={styles.title}>Let's get started.</Text>
+                    <Text style={styles.subtitle}>Enter your details to find your missing piece.</Text>
+                </View>
+
+                {/* Register Form */}
+                <View style={styles.formContainer}>
+                    
+                    {/* Nickname Input */}
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Nickname</Text>
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="person-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter your nickname"
+                                placeholderTextColor="#64748b"
+                                value={nickname}
+                                onChangeText={setNickname}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Email Field */}
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Email Address</Text>
+                        <View style={[styles.inputContainer, error && (!email) ? styles.inputError : null]}>
+                            <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="example@email.com"
+                                placeholderTextColor="#64748b"
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                value={email}
+                                onChangeText={setEmail}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Password Field */}
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Password</Text>
+                        <View style={[styles.inputContainer, error && (!password || password.length < 6) ? styles.inputError : null]}>
+                            <Ionicons name="lock-closed-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Create a password"
+                                placeholderTextColor="#64748b"
+                                secureTextEntry={!showPassword}
+                                value={password}
+                                onChangeText={setPassword}
+                            />
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Age & Location Row */}
+                    <View style={styles.row}>
+                        <View style={[styles.inputWrapper, { flex: 1, marginRight: 12 }]}>
+                            <Text style={styles.label}>Age</Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="calendar-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="21"
+                                    placeholderTextColor="#64748b"
+                                    keyboardType="numeric"
+                                    value={age}
+                                    onChangeText={setAge}
+                                    maxLength={3}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={[styles.inputWrapper, { flex: 1 }]}>
+                            <Text style={styles.label}>Location</Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="location-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="New York"
+                                    placeholderTextColor="#64748b"
+                                    value={location}
+                                    onChangeText={setLocation}
+                                />
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Bio Input */}
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Bio (Optional)</Text>
+                        <View style={[styles.inputContainer, { height: 'auto', minHeight: 60, paddingVertical: 12 }]}>
+                            <Ionicons name="information-circle-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                            <TextInput
+                                style={[styles.input, { textAlignVertical: 'top' }]}
+                                placeholder="Tell us about yourself..."
+                                placeholderTextColor="#64748b"
+                                value={bio}
+                                onChangeText={setBio}
+                                multiline
+                                maxLength={500}
+                            />
+                        </View>
+                    </View>
+
+                    {error && <Text style={styles.errorText}>{error}</Text>}
+
+                    {/* EULA Row */}
+                    <TouchableOpacity
+                        style={styles.eulaRow}
+                        onPress={() => setEulaAccepted((prev) => !prev)}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons
+                            name={eulaAccepted ? 'checkbox' : 'square-outline'}
+                            size={22}
+                            color={eulaAccepted ? '#B3717A' : '#64748b'}
+                        />
+                        <View style={styles.eulaTextContainer}>
+                            <Text style={styles.eulaText}>
+                                I accept the Terms & Conditions.
+                            </Text>
+                            <Text
+                                style={styles.eulaLink}
+                                onPress={() => Linking.openURL('https://dreamlink.app/eula').catch(() => undefined)}
+                            >
+                                Read
+                            </Text>
+                        </View>
                     </TouchableOpacity>
 
-                    {/* Header Section */}
-                    <View style={styles.headerContainer}>
-                        <Text style={styles.title}>Hesap Oluştur</Text>
-                        <Text style={styles.subtitle}>DreamLink topluluğuna katıl</Text>
+                    {/* Register Button */}
+                    <TouchableOpacity
+                        style={[styles.registerButton, loading && styles.registerButtonDisabled]}
+                        onPress={handleRegister}
+                        disabled={loading}
+                        activeOpacity={0.8}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                            <Text style={styles.registerButtonText}>Continue</Text>
+                        )}
+                    </TouchableOpacity>
+
+                    {/* Login Link */}
+                    <View style={styles.footerContainer}>
+                        <Text style={styles.footerText}>
+                            Already have an account?{' '}
+                        </Text>
+                        <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/login')}>
+                            <Text style={styles.footerTextBold}>Sign In</Text>
+                        </TouchableOpacity>
                     </View>
 
-                    {/* Form Section */}
-                    <View style={styles.formContainer}>
+                </View>
+                
+                {/* Spacer to push terms to bottom */}
+                <View style={{ flex: 1 }} />
 
-                        {/* Nickname Input */}
-                        <View style={styles.inputWrapper}>
-                            <Text style={styles.label}>Rumuz (Nickname)*</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="person-outline" size={20} color="#8A8CA8" style={styles.inputIcon} />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="RüyaGezgini"
-                                    placeholderTextColor="#C1C8FF"
-                                    value={nickname}
-                                    onChangeText={setNickname}
-                                />
-                            </View>
-                        </View>
+                {/* Terms Footer */}
+                <View style={styles.bottomTerms}>
+                    <Text style={styles.bottomTermsText}>
+                        BY TAPPING CONTINUE, YOU AGREE TO OUR TERMS & PRIVACY POLICY
+                    </Text>
+                </View>
 
-                        {/* Email Input */}
-                        <View style={styles.inputWrapper}>
-                            <Text style={styles.label}>E-posta*</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="mail-outline" size={20} color="#8A8CA8" style={styles.inputIcon} />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="ornek@email.com"
-                                    placeholderTextColor="#C1C8FF"
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    value={email}
-                                    onChangeText={setEmail}
-                                />
-                            </View>
-                        </View>
-
-                        {/* Password Input */}
-                        <View style={styles.inputWrapper}>
-                            <Text style={styles.label}>Şifre*</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="lock-closed-outline" size={20} color="#8A8CA8" style={styles.inputIcon} />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="******"
-                                    placeholderTextColor="#C1C8FF"
-                                    secureTextEntry={!showPassword}
-                                    value={password}
-                                    onChangeText={setPassword}
-                                />
-                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                                    <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#8A8CA8" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* Bio Input (Optional) */}
-                        <View style={styles.inputWrapper}>
-                            <Text style={styles.label}>Hakkımda (Bio - Opsiyonel)</Text>
-                            <View style={[styles.inputContainer, { height: 80, alignItems: 'flex-start', paddingVertical: 12 }]}>
-                                <TextInput
-                                    style={[styles.input, { textAlignVertical: 'top' }]}
-                                    placeholder="Kendinden bahset..."
-                                    placeholderTextColor="#C1C8FF"
-                                    value={bio}
-                                    onChangeText={setBio}
-                                    multiline
-                                    maxLength={500}
-                                />
-                            </View>
-                        </View>
-
-                        {/* Age & Location Row */}
-                        <View style={styles.row}>
-                            <View style={[styles.inputWrapper, { flex: 1, marginRight: 12 }]}>
-                                <Text style={styles.label}>Yaş*</Text>
-                                <View style={styles.inputContainer}>
-                                    <Ionicons name="calendar-outline" size={20} color="#8A8CA8" style={styles.inputIcon} />
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="18"
-                                        placeholderTextColor="#C1C8FF"
-                                        keyboardType="numeric"
-                                        value={age}
-                                        onChangeText={setAge}
-                                        maxLength={3}
-                                    />
-                                </View>
-                            </View>
-
-                            <View style={[styles.inputWrapper, { flex: 1 }]}>
-                                <Text style={styles.label}>Konum</Text>
-                                <View style={styles.inputContainer}>
-                                    <Ionicons name="location-outline" size={20} color="#8A8CA8" style={styles.inputIcon} />
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="İstanbul"
-                                        placeholderTextColor="#C1C8FF"
-                                        value={location}
-                                        onChangeText={setLocation}
-                                    />
-                                </View>
-                            </View>
-                        </View>
-
-                        {error && <Text style={styles.errorText}>{error}</Text>}
-
-                        <TouchableOpacity
-                            style={styles.eulaRow}
-                            onPress={() => setEulaAccepted((prev) => !prev)}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons
-                                name={eulaAccepted ? 'checkbox' : 'square-outline'}
-                                size={22}
-                                color={eulaAccepted ? '#7E6BFF' : '#8A8CA8'}
-                            />
-                            <Text style={styles.eulaText}>
-                                <Text>Kullanıcı Sözleşmesi'ni kabul ediyorum. </Text>
-                                <Text
-                                    style={styles.eulaLink}
-                                    onPress={() => Linking.openURL('https://dreamlink.app/eula').catch(() => undefined)}
-                                >
-                                    Sözleşmeyi görüntüle
-                                </Text>
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* Register Button */}
-                        <TouchableOpacity
-                            style={[styles.registerButton, loading && styles.registerButtonDisabled]}
-                            onPress={handleRegister}
-                            disabled={loading || !eulaAccepted}
-                            activeOpacity={0.8}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color="#FFFFFF" />
-                            ) : (
-                                <Text style={styles.registerButtonText}>Kayıt Ol</Text>
-                            )}
-                        </TouchableOpacity>
-
-                        {/* Login Link */}
-                        <TouchableOpacity style={styles.loginLink} onPress={handleGoBack} activeOpacity={0.7}>
-                            <Text style={styles.loginText}>
-                                Zaten hesabın var mı? <Text style={styles.loginTextBold}>Giriş Yap</Text>
-                            </Text>
-                        </TouchableOpacity>
-
-                    </View>
             </ScrollView>
-        </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#0a0705',
     },
-    scrollContent: {
+    backgroundImage: {
+        width: width,
+        height: height,
+        position: 'absolute',
+    },
+    topBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 24,
+        paddingTop: 16,
+        paddingBottom: 8,
+        justifyContent: 'space-between',
     },
     backButton: {
-        marginBottom: 24,
         width: 40,
         height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
-        alignItems: 'flex-start',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    topBarTitle: {
+        color: 'rgba(179, 113, 122, 0.8)',
+        fontSize: 12,
+        fontWeight: '700',
+        letterSpacing: 2,
+        textTransform: 'uppercase',
+    },
+    backButtonPlaceholder: {
+        width: 40,
     },
     headerContainer: {
-        marginBottom: 32,
+        paddingHorizontal: 32,
+        paddingTop: 16,
+        paddingBottom: 16,
     },
     title: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#2D2D3A',
-        marginBottom: 8,
+        fontSize: 36,
+        fontWeight: '700',
+        color: '#FFFFFF',
         letterSpacing: -0.5,
+        marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
-        color: '#8A8CA8',
-        fontWeight: '500',
+        fontWeight: '400',
+        color: '#cbd5e1',
     },
     formContainer: {
-        width: '100%',
+        paddingHorizontal: 32,
+        paddingVertical: 16,
     },
     inputWrapper: {
         marginBottom: 20,
@@ -328,28 +370,35 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 14,
-        fontWeight: '600',
-        color: '#2D2D3A',
+        fontWeight: '500',
+        color: '#e2e8f0',
         marginBottom: 8,
         marginLeft: 4,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFF',
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
         borderRadius: 16,
-        paddingHorizontal: 16,
-        height: 56,
+        paddingHorizontal: 20,
+        height: 60,
         borderWidth: 1,
-        borderColor: '#F1F3FF',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
-    inputIcon: {
-        marginRight: 12,
+    inputError: {
+        borderColor: '#FF6B6B',
     },
     input: {
         flex: 1,
         fontSize: 16,
-        color: '#2D2D3A',
+        color: '#FFFFFF',
+        fontWeight: '400',
+    },
+    inputIcon: {
+        marginRight: 12,
+    },
+    eyeIcon: {
+        padding: 4,
     },
     errorText: {
         fontSize: 13,
@@ -362,35 +411,39 @@ const styles = StyleSheet.create({
     eulaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 2,
-        marginBottom: 16,
-        gap: 8,
+        marginBottom: 24,
+        marginTop: -4,
+    },
+    eulaTextContainer: {
+        flexDirection: 'row',
+        marginLeft: 12,
+        flexWrap: 'wrap',
     },
     eulaText: {
-        flex: 1,
-        color: '#5E5E72',
+        color: '#cbd5e1',
         fontSize: 13,
-        lineHeight: 18,
+        marginRight: 4,
     },
     eulaLink: {
-        color: '#7E6BFF',
+        color: '#B3717A',
+        fontSize: 13,
         fontWeight: '700',
     },
     registerButton: {
-        backgroundColor: '#7E6BFF',
-        borderRadius: 16,
-        height: 56,
+        backgroundColor: '#B3717A',
+        borderRadius: 30,
+        height: 60,
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 8,
-        shadowColor: '#7E6BFF',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.25,
-        shadowRadius: 16,
+        shadowColor: '#B3717A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
         elevation: 8,
     },
     registerButtonDisabled: {
-        backgroundColor: '#C1C8FF',
+        backgroundColor: 'rgba(179, 113, 122, 0.5)',
         shadowOpacity: 0.1,
     },
     registerButtonText: {
@@ -398,17 +451,33 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
-    loginLink: {
-        marginTop: 24,
+    footerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
+        paddingTop: 24,
+        paddingBottom: 24,
     },
-    loginText: {
+    footerText: {
         fontSize: 14,
-        color: '#8A8CA8',
+        color: '#94a3b8',
     },
-    loginTextBold: {
-        color: '#7E6BFF',
+    footerTextBold: {
+        color: '#FFFFFF',
+        fontSize: 14,
         fontWeight: '700',
     },
+    bottomTerms: {
+        alignItems: 'center',
+        paddingHorizontal: 32,
+        paddingBottom: 16,
+        opacity: 0.8,
+    },
+    bottomTermsText: {
+        fontSize: 10,
+        color: '#64748b',
+        textAlign: 'center',
+        letterSpacing: 1.5,
+        lineHeight: 16,
+    }
 });
