@@ -123,18 +123,20 @@ const DreamCard = React.memo(({ dream }: { dream: DreamResponse }) => {
     <Pressable onPress={handlePress} style={styles.dreamCard}>
       <View style={styles.dreamHeader}>
         <View style={styles.userInfo}>
-          {dream.avatarUrl ? (
-            <Image source={{ uri: dream.avatarUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarInitial}>{dream.nickname.charAt(0).toUpperCase()}</Text>
-            </View>
-          )}
+          <TouchableOpacity onPress={() => router.push('/user-profile')} activeOpacity={0.8}>
+            {dream.avatarUrl ? (
+              <Image source={{ uri: dream.avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarInitial}>{dream.nickname.charAt(0).toUpperCase()}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
-          <View style={styles.userDetails}>
+          <TouchableOpacity onPress={() => router.push('/user-profile')} activeOpacity={0.8} style={styles.userDetails}>
             <Text style={styles.username}>{dream.nickname}</Text>
             <Text style={styles.timestamp}>{formatRelativeTime(dream.createdAt)}</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={[styles.themeBadge, { backgroundColor: getThemeColor(dream.theme).bg, borderColor: getThemeColor(dream.theme).bg, borderWidth: 1 }]}>

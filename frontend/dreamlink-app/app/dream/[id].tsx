@@ -231,7 +231,7 @@ export default function DreamDetailScreen() {
     const renderHeader = () => (
         <View style={styles.article}>
           <View style={styles.metaRowTop}>
-            <View style={styles.metaLeft}>
+            <TouchableOpacity style={styles.metaLeft} activeOpacity={0.8} onPress={() => router.push('/user-profile')}>
               {dream.avatarUrl ? (
                 <Image source={{ uri: dream.avatarUrl }} style={styles.avatar} />
               ) : (
@@ -243,7 +243,7 @@ export default function DreamDetailScreen() {
                 <Text style={styles.authorName}>{dream.nickname}</Text>
                 <Text style={styles.postedAt}>Posted {formatRelativeTime(dream.createdAt).toLowerCase()}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
             <View style={styles.themePill}>
               <Ionicons name={THEME_TO_ICON[dream.theme] as any} size={14} color="#2563eb" />

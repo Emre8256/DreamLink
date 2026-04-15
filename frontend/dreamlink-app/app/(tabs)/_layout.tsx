@@ -30,7 +30,7 @@ export default function TabLayout() {
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          paddingTop: 16, // Bu değeri artırdıkça ikonlar aşağı iner
+          paddingTop: 0, // <-- Burayı 16'dan 0'a çek veya bu satırı tamamen sil
         },
         tabBarStyle: {
           position: 'absolute',

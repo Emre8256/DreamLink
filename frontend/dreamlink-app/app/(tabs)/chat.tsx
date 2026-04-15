@@ -80,7 +80,7 @@ const ChatCard = ({
     onLongPress={() => onSelect(item.id)}
     onPress={() => {
       if (isSelected) {
-        onSelect(item.id); 
+        onSelect(item.id);
       } else {
         onPress();
       }
@@ -88,14 +88,16 @@ const ChatCard = ({
   >
     {/* Avatar */}
     <View style={styles.avatarWrap}>
-      <Avatar url={item.otherUser.avatarUrl} name={item.otherUser.nickname} size={56} />
+      <TouchableOpacity onPress={() => router.push('/user-profile')} activeOpacity={0.8}>
+        <Avatar url={item.otherUser.avatarUrl} name={item.otherUser.nickname} size={56} />
+      </TouchableOpacity>
     </View>
 
     {/* Text */}
     <View style={styles.cardText}>
       <View style={styles.nameRow}>
         <Text style={[styles.cardName, isUnread && { fontWeight: '800' }]} numberOfLines={1}>{item.otherUser.nickname}</Text>
-        <Text style={[styles.cardTime, isUnread && { color: '#B3717A', fontWeight: 'bold' }]}>
+        <Text style={[styles.cardTime, isUnread && { color: '#B3717A', fontWeight: 'bold' }]}> 
           {item.lastMessageAt ? formatRelativeTime(item.lastMessageAt) : 'Yeni'}
         </Text>
       </View>
@@ -122,12 +124,14 @@ const NewConnections = () => (
     <Text style={styles.connectionsTitle}>NEW CONNECTIONS</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.connectionsScroll}>
       {MockConnections.map((user, idx) => (
-        <TouchableOpacity key={idx} style={styles.connectionItem} onPress={() => {}}>
-          <View style={styles.connectionAvatarBorder}>
-            <Image source={{ uri: user.img }} style={styles.connectionAvatar} />
-          </View>
+        <View key={idx} style={styles.connectionItem}>
+          <TouchableOpacity onPress={() => router.push('/user-profile')}>
+            <View style={styles.connectionAvatarBorder}>
+              <Image source={{ uri: user.img }} style={styles.connectionAvatar} />
+            </View>
+          </TouchableOpacity>
           <Text style={styles.connectionName}>{user.name}</Text>
-        </TouchableOpacity>
+        </View>
       ))}
     </ScrollView>
   </View>

@@ -154,13 +154,11 @@ export default function DiscoverScreen() {
       },
       onPanResponderRelease: (ev, gestureState) => {
         if (isAnimating.current) return;
-
         if (gestureState.dx > SWIPE_THRESHOLD) {
           triggerSwipe('right');
         } else if (gestureState.dx < -SWIPE_THRESHOLD) {
           triggerSwipe('left');
         } else {
-          // Snap back
           Animated.spring(position, {
             toValue: { x: 0, y: 0 },
             friction: 5,
@@ -208,7 +206,19 @@ export default function DiscoverScreen() {
   });
 
   const topCardStyle = {
-    transform: [...position.getTranslateTransform(), { rotate }],
+    transform: [
+      ...position.getTranslateTransform(),
+      { rotate },
+      { perspective: 800 },
+      {
+        scale: position.x.interpolate({
+          inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
+          outputRange: [0.96, 1, 0.96],
+          extrapolate: 'clamp',
+        }),
+      },
+    ],
+    zIndex: 20,
   };
 
   // ─── Rendering Engine ───────────────────────────────────────────────────────
@@ -258,32 +268,28 @@ export default function DiscoverScreen() {
       const mockImage = "https://images.unsplash.com/photo-1618331835717-801e976710b2?q=80&w=600&auto=format&fit=crop";
 
       const cardBody = (
-        <View style={styles.cardContent}>
-           {/* Image Frame */}
-           <View style={styles.imageContainer}>
+          <View style={styles.cardContent}>
+            {/* Image Frame */}
+            <View style={styles.imageContainer}>
               <Image source={{ uri: mockImage }} style={styles.image} />
-              
               <View style={styles.matchBadge}>
-                 <Text style={styles.matchBadgeText}>{item.similarityPercent}% Match</Text>
+                <Text style={styles.matchBadgeText}>{item.similarityPercent}% Match</Text>
               </View>
-
               <LinearGradient colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)']} style={styles.imageFade} />
-           </View>
-           
-           {/* Info Frame */}
-           <View style={styles.infoContainer}>
+            </View>
+            {/* Info Frame */}
+            <View style={styles.infoContainer}>
               <View style={styles.infoTopRow}>
-                 <View style={styles.onlineDot} />
-                 <Text style={styles.userNameText}>{item.matchedUserNickname}</Text>
+                <View style={styles.onlineDot} />
+                <Text style={styles.userNameText}>{item.matchedUserNickname}</Text>
               </View>
-              
               <View style={styles.dreamPanel}>
-                 <Text style={styles.dreamPanelLabel}>SIMILAR DREAM</Text>
-                 <Text style={styles.dreamPanelTitle}>"{item.matchedDreamTitle}"</Text>
-                 <Text style={styles.dreamPanelDesc} numberOfLines={2}>{item.matchedDreamDescription}</Text>
+                <Text style={styles.dreamPanelLabel}>SIMILAR DREAM</Text>
+                <Text style={styles.dreamPanelTitle}>"{item.matchedDreamTitle}"</Text>
+                <Text style={styles.dreamPanelDesc} numberOfLines={2}>{item.matchedDreamDescription}</Text>
               </View>
-           </View>
-        </View>
+            </View>
+          </View>
       );
 
       if (isTop) {
@@ -383,18 +389,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
+    maxWidth: '100%',
     paddingBottom: 40,
   },
   
   cardAbsoluteWrapper: {
     position: 'absolute',
-    width: SCREEN_WIDTH * 0.82,
+    width: Math.min(SCREEN_WIDTH * 0.74, 320),
+    maxWidth: '88%',
     aspectRatio: 3 / 4.4,
     shadowColor: '#334155',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
     shadowRadius: 25,
     elevation: 8,
+    alignSelf: 'center',
+    borderRadius: 24,
   },
   cardContent: {
     flex: 1,

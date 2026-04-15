@@ -59,25 +59,26 @@ const CustomHeader = ({
         </TouchableOpacity>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ position: 'relative' }}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
-            ) : (
-              <View style={[styles.headerAvatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarInitial}>
-                  {title.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <View style={styles.onlineDot} />
-          </View>
-          
-          <View style={{ flexDirection: 'column' }}>
-            <Text style={styles.headerName} numberOfLines={1}>
-              {title}
-            </Text>
-            <Text style={{ fontSize: 12, color: '#64748b' }}>Online</Text>
-          </View>
+          <TouchableOpacity onPress={() => router.push('/user-profile')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ position: 'relative' }}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
+              ) : (
+                <View style={[styles.headerAvatar, styles.avatarPlaceholder]}>
+                  <Text style={styles.avatarInitial}>
+                    {title.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.onlineDot} />
+            </View>
+            <View style={{ flexDirection: 'column', marginLeft: 4 }}>
+              <Text style={styles.headerName} numberOfLines={1}>
+                {title}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#64748b' }}>Online</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
