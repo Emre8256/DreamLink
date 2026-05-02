@@ -20,7 +20,7 @@ export default function PremiumUpsellScreen() {
   const params = useLocalSearchParams<{ reason?: string }>();
   const reason = resolveReason(params.reason);
   const copy = getPremiumCtaCopy(reason);
-  const primaryLabel = 'Yakinda';
+  const primaryLabel = 'Coming soon';
 
   useEffect(() => {
     void logAnalyticsEvent({
@@ -72,7 +72,7 @@ export default function PremiumUpsellScreen() {
               source: 'premiumUpsell',
               reason,
             });
-            if (Platform.OS === 'web') window.alert('Yak\u0131nda\nPremium sat\u0131n alma ak\u0131\u015f\u0131 demo kapsam\u0131nda aktif de\u011fil.');
+            if (Platform.OS === 'web') window.alert('Coming soon\nPremium purchase flow is disabled in this demo.');
             else Alert.alert('Coming soon', 'Premium purchase flow is disabled in this demo.');
           }}
         >

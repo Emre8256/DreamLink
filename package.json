@@ -1,7 +1,10 @@
 {
   "dependencies": {
+    "@react-native-community/slider": "^5.1.2",
     "@stomp/stompjs": "^7.3.0",
     "expo": "^55.0.12",
+    "expo-blur": "~55.0.14",
+    "expo-image-picker": "^55.0.18",
     "sockjs-client": "^1.6.1",
     "zustand": "^5.0.11"
   },

@@ -22,7 +22,7 @@ const user = {
   name: 'Yunus Emre',
   age: 24,
   location: 'Istanbul, Turkey',
-  bio: 'Dreamer. Jungian. Coffee lover.\n"Rüyalar, bilinçaltının şiiridir."',
+  bio: 'Dreamer. Jungian. Coffee lover.\n"Dreams are the poetry of the subconscious."',
   dreams: 12,
   followers: 1280,
   following: 345,

@@ -52,24 +52,24 @@ const VISIBILITY_ICON: Record<string, string> = {
 };
 
 const ZODIAC_SIGNS = [
-    'Koc',
-    'Boga',
-    'Ikizler',
-    'Yengec',
-    'Aslan',
-    'Basak',
-    'Terazi',
-    'Akrep',
-    'Yay',
-    'Oglak',
-    'Kova',
-    'Balik',
+    'Aries',
+    'Taurus',
+    'Gemini',
+    'Cancer',
+    'Leo',
+    'Virgo',
+    'Libra',
+    'Scorpio',
+    'Sagittarius',
+    'Capricorn',
+    'Aquarius',
+    'Pisces',
 ];
 
 const PERSONAS: { key: DreamInterpretPersona; label: string; subtitle: string }[] = [
-    { key: 'FREUD', label: 'Sigmund Freud', subtitle: 'Psikanalitik, id-ego catismasi' },
-    { key: 'JUNG', label: 'Carl Jung', subtitle: 'Arketipler, golge, kolektif bilincalti' },
-    { key: 'ASTROLOG', label: 'Astrolog', subtitle: 'Burc + transit + kozmik semboller' },
+    { key: 'FREUD', label: 'Sigmund Freud', subtitle: 'Psychoanalytic, id-ego conflict' },
+    { key: 'JUNG', label: 'Carl Jung', subtitle: 'Archetypes, shadow, collective unconscious' },
+    { key: 'ASTROLOG', label: 'Astrologer', subtitle: 'Zodiac + transit + cosmic symbols' },
 ];
 
 const PERSONA_THEME: Record<DreamInterpretPersona, { card: string; text: string; accent: string }> = {
@@ -231,7 +231,7 @@ export default function DreamDetailScreen() {
     const renderHeader = () => (
         <View style={styles.article}>
           <View style={styles.metaRowTop}>
-            <TouchableOpacity style={styles.metaLeft} activeOpacity={0.8} onPress={() => router.push('/user-profile')}>
+            <View style={styles.metaLeft}>
               {dream.avatarUrl ? (
                 <Image source={{ uri: dream.avatarUrl }} style={styles.avatar} />
               ) : (
@@ -243,7 +243,7 @@ export default function DreamDetailScreen() {
                 <Text style={styles.authorName}>{dream.nickname}</Text>
                 <Text style={styles.postedAt}>Posted {formatRelativeTime(dream.createdAt).toLowerCase()}</Text>
               </View>
-            </TouchableOpacity>
+            </View>
 
             <View style={styles.themePill}>
               <Ionicons name={THEME_TO_ICON[dream.theme] as any} size={14} color="#2563eb" />
@@ -307,10 +307,10 @@ export default function DreamDetailScreen() {
               ]}
             >
               <Text style={[styles.interpretationTitle, { color: PERSONA_THEME[interpretation.persona].accent }]}>
-                {PERSONAS.find(p => p.key === interpretation.persona)?.label} Analizi
+                {PERSONAS.find(p => p.key === interpretation.persona)?.label} Analysis
               </Text>
               <Text style={[styles.interpretationMeta, { color: PERSONA_THEME[interpretation.persona].text }]}>
-                Burc: {interpretation.zodiacSign}
+                Zodiac: {interpretation.zodiacSign}
               </Text>
               <Text style={[styles.interpretationContent, { color: PERSONA_THEME[interpretation.persona].text }]}>
                 {interpretation.content}

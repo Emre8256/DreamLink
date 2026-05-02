@@ -1,12 +1,17 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent, isSpeechRecognitionAvailable } from '../../services/speechRecognition';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+  isSpeechRecognitionAvailable,
+} from '../../services/speechRecognition';
 import wsService from '../../services/websocket';
 import { useAppStore } from '../../store/useAppStore';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
+  StatusBar,
   Image,
   Pressable,
   StyleSheet,
@@ -16,12 +21,9 @@ import {
   View,
   Alert,
   RefreshControl,
-  TouchableWithoutFeedback,
-  Keyboard,
-  Dimensions,
   Platform,
   Animated,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,446 +33,480 @@ import {
   DreamResponse,
   DreamTheme,
   CreateDreamRequest,
-  THEME_TO_TURKISH,
-  THEME_TO_ICON,
   formatRelativeTime,
   toggleLike,
   getUserDreams,
   getMyProfile,
-  deleteDream,
-  updateDreamVisibility
 } from '../../services/api';
-import { Modal } from 'react-native';
 
-// --- Cross-platform Alert helpers (Alert.alert is no-op on web) ---
-const showAlert = (title: string, message: string) => {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}\n${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
-};
-const showConfirm = (title: string, message: string, onConfirm: () => void) => {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${title}\n${message}`)) onConfirm();
-  } else {
-    Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Evet', style: 'destructive', onPress: onConfirm },
-    ]);
-  }
+// ─ Design tokens & Premium Palette ───────────────────────────────
+const C = {
+  rose: '#A63F4F',      // Koyu Rose (Ana Renk)
+  roseLt: '#F7E6E8',    // Açık Rose (Arka planlar, soft geçişler)
+  roseMd: '#D697A2',    // Orta Rose (Çizgiler, pasif ikonlar)
+  roseDk: '#7D2D3A',    // Derin Rose (Koyu vurgular)
+  bg: '#FFFFFF',        // Saf Beyaz
+  sand: '#F8FAFC',      // Çok uçuk gri (Filtre hapları, sekmeler)
+  card: '#FFFFFF',
+  t1: '#1C1714',        // Koyu Füme (Ana Başlıklar)
+  t2: '#475569',        // Orta Gri (Metinler)
+  tm: '#94a3b8',        // Açık Gri (Tarih, alt metin)
+  white: '#FFFFFF',
+} as const;
+
+const SERIF = Platform.OS === 'ios' ? 'Georgia' : 'serif';
+const QS_BOLD = 'Quicksand_700Bold';
+
+type ThemeDisplay = { label: string; emoji: string; bar: string; badgeBg: string; badgeC: string };
+
+const THEME_DISPLAY: Record<DreamTheme, ThemeDisplay> = {
+  LUCID: { label: 'Lucid', emoji: '✨', bar: '#7098D4', badgeBg: '#E8EDF6', badgeC: '#4A70B4' },
+  NIGHTMARE: { label: 'Nightmare', emoji: '🌑', bar: '#A08090', badgeBg: '#F0EDEE', badgeC: '#806070' },
+  HAPPY: { label: 'Happy', emoji: '😊', bar: '#80B090', badgeBg: '#EBF2EC', badgeC: '#4A8A60' },
+  SAD: { label: 'Sad', emoji: '😢', bar: '#C4A060', badgeBg: '#F5EFE3', badgeC: '#9A7840' },
+  ANGRY: { label: 'Angry', emoji: '😠', bar: '#8090A0', badgeBg: '#ECEEF0', badgeC: '#607080' },
+  LOVE: { label: 'Love', emoji: '❤️', bar: C.rose, badgeBg: C.roseLt, badgeC: C.rose },
+  EXCITED: { label: 'Excited', emoji: '🎉', bar: '#606070', badgeBg: '#EEEEEF', badgeC: '#505060' },
+  CURIOUS: { label: 'Curious', emoji: '🔮', bar: '#A080B8', badgeBg: '#F0EBF5', badgeC: '#806098' },
 };
 
-const getThemeColor = (themeId: string) => {
-  const mapping: Record<string, { bg: string, text: string }> = {
-    'HAPPY': { bg: '#fff7ed', text: '#ea580c' },
-    'LOVE': { bg: '#fdf2f8', text: '#db2777' },
-    'NIGHTMARE': { bg: '#fff1f2', text: '#e11d48' },
-    'LUCID': { bg: '#f5f3ff', text: '#7c3aed' },
-    'SAD': { bg: '#eff6ff', text: '#2563eb' },
-    'ANGRY': { bg: '#fef2f2', text: '#dc2626' },
-  };
-  return mapping[themeId] || { bg: '#f1f5f9', text: '#64748b' };
-};
+const ORDERED_THEMES: DreamTheme[] = ['LUCID', 'NIGHTMARE', 'HAPPY', 'SAD', 'ANGRY', 'LOVE', 'EXCITED', 'CURIOUS'];
 
-// --- CONSTANTS ---
-const DREAM_TAGS: { id: DreamTheme; label: string; emoji: string }[] = [
-  { id: 'HAPPY', label: 'Happy', emoji: '😊' },
-  { id: 'SAD', label: 'Sad', emoji: '😢' },
-  { id: 'NIGHTMARE', label: 'Nightmare', emoji: '👻' },
-  { id: 'LOVE', label: 'Love', emoji: '❤️' },
-  { id: 'LUCID', label: 'Lucid', emoji: '✨' },
-  { id: 'ANGRY', label: 'Angry', emoji: '😠' },
-  { id: 'EXCITED', label: 'Excited', emoji: '🎉' },
-  { id: 'CURIOUS', label: 'Curious', emoji: '🤔' },
+// Mock Profile Images Pool
+const MOCK_AVATARS = [
+  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+  'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&q=80',
 ];
 
-const VISIBILITY_OPTIONS = [
-  { id: 'PUBLIC', label: 'Public', icon: 'globe-outline' },
-  { id: 'FOLLOWERS_ONLY', label: 'Followers only', icon: 'people-outline' },
-  { id: 'PRIVATE', label: 'Private', icon: 'lock-closed-outline' },
-];
+const showAlert = (title: string, msg: string) => {
+  if (Platform.OS === 'web') window.alert(`${title}\n${msg}`);
+  else Alert.alert(title, msg);
+};
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// --- COMPONENTS ---
-
-const DreamCard = React.memo(({ dream }: { dream: DreamResponse }) => {
-  const router = useRouter();
-  const [isLiked, setIsLiked] = useState(dream.isLiked);
-  const [likeCount, setLikeCount] = useState(dream.likeCount);
-
-  const handlePress = () => {
-    router.push(`/dream/${dream.id}`);
-  };
-
-  const handleLike = async () => {
-    const newLikedState = !isLiked;
-    setIsLiked(newLikedState);
-    setLikeCount(prev => newLikedState ? prev + 1 : prev - 1);
-
-    try {
-      await toggleLike(dream.id);
-    } catch (error) {
-      // Revert on error
-      setIsLiked(!newLikedState);
-      setLikeCount(prev => newLikedState ? prev - 1 : prev + 1);
-      console.error("Like error:", error);
-    }
-  };
-
+// ─ Animated ambient dot ────────────────────────────────────────────
+const StarDot = React.memo(({ left, top, sz }: { left: string; top: string; sz: number }) => {
+  const opac = useRef(new Animated.Value(0.1)).current;
+  useEffect(() => {
+    const a = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opac, { toValue: 0.4, duration: 2000 + Math.random() * 1500, useNativeDriver: true }),
+        Animated.timing(opac, { toValue: 0.1, duration: 1800 + Math.random() * 1200, useNativeDriver: true }),
+      ])
+    );
+    a.start();
+    return () => a.stop();
+  }, []);
   return (
-    <Pressable onPress={handlePress} style={styles.dreamCard}>
-      <View style={styles.dreamHeader}>
-        <View style={styles.userInfo}>
-          <TouchableOpacity onPress={() => router.push('/user-profile')} activeOpacity={0.8}>
-            {dream.avatarUrl ? (
-              <Image source={{ uri: dream.avatarUrl }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarInitial}>{dream.nickname.charAt(0).toUpperCase()}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => router.push('/user-profile')} activeOpacity={0.8} style={styles.userDetails}>
-            <Text style={styles.username}>{dream.nickname}</Text>
-            <Text style={styles.timestamp}>{formatRelativeTime(dream.createdAt)}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.themeBadge, { backgroundColor: getThemeColor(dream.theme).bg, borderColor: getThemeColor(dream.theme).bg, borderWidth: 1 }]}>
-          <Ionicons name={THEME_TO_ICON[dream.theme] as any} size={12} color={getThemeColor(dream.theme).text} />
-          <Text style={[styles.themeText, { color: getThemeColor(dream.theme).text, marginLeft: 4 }]}>
-             {THEME_TO_TURKISH[dream.theme]}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.dreamTitle}>{dream.title}</Text>
-      <Text style={styles.dreamDescription} numberOfLines={3}>{dream.description}</Text>
-
-      <View style={styles.interactionBar}>
-        <TouchableOpacity
-          style={styles.interactionButton}
-          onPress={handleLike}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isLiked ? "heart" : "heart-outline"}
-            size={20}
-            color={isLiked ? "#B3717A" : "#94a3b8"}
-          />
-          <Text style={[
-            styles.interactionCount,
-            isLiked && styles.interactionCountActive
-          ]}>
-            {likeCount}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.interactionButton} activeOpacity={0.7} onPress={handlePress}>
-          <Ionicons name="chatbubble-outline" size={20} color="#94a3b8" />
-          <Text style={styles.interactionCount}>{dream.commentCount}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.matchButton} activeOpacity={0.7}>
-          <MaterialCommunityIcons name="auto-fix" size={20} color="#B3717A" />
-          <Text style={styles.matchButtonText}>Match</Text>
-        </TouchableOpacity>
-      </View>
-    </Pressable>
+    <Animated.View
+      style={{
+        position: 'absolute', left: left as any, top: top as any,
+        width: sz * 2, height: sz * 2, borderRadius: sz, 
+        backgroundColor: C.roseMd, 
+        opacity: opac,
+        transform: [{ scale: opac.interpolate({ inputRange: [0.1, 0.4], outputRange: [0.8, 1.2] }) }] 
+      }}
+    />
   );
 });
 
-// --- TODAY DREAM CARD COMPONENT ---
-const VISIBILITY_CYCLE: Array<'PUBLIC' | 'FOLLOWERS_ONLY' | 'PRIVATE'> = ['PUBLIC', 'FOLLOWERS_ONLY', 'PRIVATE'];
-const VISIBILITY_LABEL: Record<string, string> = {
-  PUBLIC: '🌍 Public',
-  FOLLOWERS_ONLY: '👥 Followers',
-  PRIVATE: '🔒 Private',
-};
-const VISIBILITY_NEXT_LABEL: Record<string, string> = {
-  PUBLIC: 'Make followers-only',
-  FOLLOWERS_ONLY: 'Make private',
-  PRIVATE: 'Make public',
-};
+const STARS = [
+  { left: '9%', top: '14%', sz: 2 }, { left: '26%', top: '32%', sz: 1.5 },
+  { left: '50%', top: '10%', sz: 2.5 }, { left: '70%', top: '22%', sz: 1.5 },
+  { left: '83%', top: '50%', sz: 2 }, { left: '40%', top: '62%', sz: 1.5 },
+  { left: '16%', top: '72%', sz: 1 }, { left: '62%', top: '80%', sz: 2 },
+  { left: '88%', top: '10%', sz: 1.5 }, { left: '32%', top: '84%', sz: 1 },
+];
 
-const TodayDreamCard = React.memo(({ dream, onDelete, onVisibilityChange }: {
-  dream: DreamResponse;
-  onDelete: (id: string) => void;
-  onVisibilityChange: (updated: DreamResponse) => void;
-}) => {
-  const router = useRouter();
-
-  const handlePress = () => {
-    router.push(`/dream/${dream.id}`);
-  };
-
-  return (
-    <Pressable onPress={handlePress} style={styles.dreamCard}>
-      <View style={styles.dreamHeader}>
-        <View style={styles.userInfo}>
-          {dream.avatarUrl ? (
-            <Image source={{ uri: dream.avatarUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarInitial}>{dream.nickname.charAt(0).toUpperCase()}</Text>
-            </View>
-          )}
-
-          <View style={styles.userDetails}>
-            <Text style={styles.username}>{dream.nickname}</Text>
-            <Text style={styles.timestamp}>{formatRelativeTime(dream.createdAt)}</Text>
-          </View>
-        </View>
-
-        <View style={[styles.themeBadge, { backgroundColor: getThemeColor(dream.theme).bg, borderColor: getThemeColor(dream.theme).bg, borderWidth: 1 }]}>
-          <Ionicons name={THEME_TO_ICON[dream.theme] as any} size={12} color={getThemeColor(dream.theme).text} />
-          <Text style={[styles.themeText, { color: getThemeColor(dream.theme).text, marginLeft: 4 }]}>
-             {THEME_TO_TURKISH[dream.theme]}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.dreamTitle}>{dream.title}</Text>
-      <Text style={styles.dreamDescription} numberOfLines={3}>{dream.description}</Text>
-
-      <View style={styles.interactionBar}>
-        <TouchableOpacity style={styles.interactionButton} activeOpacity={0.7} onPress={handlePress}>
-          <Ionicons name="chatbubble-outline" size={20} color="#94a3b8" />
-          <Text style={styles.interactionCount}>{dream.commentCount}</Text>
-        </TouchableOpacity>
-        
-        <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: '#B3717A', letterSpacing: 0.5 }}>YOUR DREAM</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-});
-
-// --- DREAM SHARE FORM COMPONENT ---
-// This is moved OUTSIDE of HomeScreen to prevent re-renders causing keyboard dismissal
-const DreamShareForm = ({ onDreamShared, styles }: { onDreamShared: (dream: DreamResponse) => void, styles: any }) => {
+// ─ Creator Card ──────────────────────────────────────────────────
+const CreatorCard = ({ onDreamShared }: { onDreamShared: (d: DreamResponse) => void }) => {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedTheme, setSelectedTheme] = useState<DreamTheme | null>(null);
-  const [selectedVisibility, setSelectedVisibility] = useState<'PUBLIC' | 'FOLLOWERS_ONLY' | 'PRIVATE'>('PUBLIC');
+  const [desc, setDesc] = useState('');
+  const [theme, setTheme] = useState<DreamTheme | null>(null);
+  const [isPublic, setIsPublic] = useState(true);
   const [sharing, setSharing] = useState(false);
-
-  // --- Speech Recognition State ---
+  const [themeOpen, setThemeOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const micPulseAnim = useRef(new Animated.Value(1)).current;
+  const micPulse = useRef(new Animated.Value(1)).current;
 
-  // Speech recognition event listeners
   useSpeechRecognitionEvent('start', () => {
     setIsListening(true);
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(micPulseAnim, { toValue: 1.25, duration: 600, useNativeDriver: true }),
-        Animated.timing(micPulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-      ])
-    ).start();
+    Animated.loop(Animated.sequence([
+      Animated.timing(micPulse, { toValue: 1.25, duration: 600, useNativeDriver: true }),
+      Animated.timing(micPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+    ])).start();
   });
 
   useSpeechRecognitionEvent('end', () => {
-    setIsListening(false);
-    micPulseAnim.stopAnimation();
-    micPulseAnim.setValue(1);
+    setIsListening(false); micPulse.stopAnimation(); micPulse.setValue(1);
   });
 
   useSpeechRecognitionEvent('result', (event: any) => {
-    const transcript = event.results[0]?.transcript ?? '';
-    if (transcript) {
-      if (event.isFinal) {
-        setDescription(prev => {
-          const separator = prev.trim().length > 0 ? ' ' : '';
-          return prev.trim() + separator + transcript;
-        });
-      } else {
-        setDescription(prev => {
-          const base = prev.replace(/\u200B[\s\S]*$/, '').trim();
-          const separator = base.length > 0 ? ' ' : '';
-          return base + separator + '\u200B' + transcript;
-        });
-      }
+    const t = event.results[0]?.transcript ?? '';
+    if (!t) return;
+    if (event.isFinal) {
+      setDesc(prev => prev.trim() + (prev.trim() ? ' ' : '') + t);
+    } else {
+      setDesc(prev => {
+        const base = prev.replace(/​[\s\S]*$/, '').trim();
+        return base + (base.length > 0 ? ' ' : '') + '​' + t;
+      });
     }
   });
 
-  useSpeechRecognitionEvent('error', (event: any) => {
-    setIsListening(false);
-    micPulseAnim.stopAnimation();
-    micPulseAnim.setValue(1);
+  useSpeechRecognitionEvent('error', () => {
+    setIsListening(false); micPulse.stopAnimation(); micPulse.setValue(1);
   });
 
-  const handleToggleListening = async () => {
+  const handleMic = async () => {
     if (isListening) {
       ExpoSpeechRecognitionModule.stop();
-      setDescription(prev => prev.replace(/\u200B/g, ''));
+      setDesc(prev => prev.replace(/​/g, ''));
       return;
     }
     if (!isSpeechRecognitionAvailable || !ExpoSpeechRecognitionModule) {
       showAlert('Development build required', 'Voice input does not work in Expo Go.');
       return;
     }
-    const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-    if (!result.granted) {
-      showAlert('Permission denied', 'Microphone permission is required.');
-      return;
-    }
+    const r = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!r.granted) { showAlert('Permission denied', 'Microphone permission is required.'); return; }
     ExpoSpeechRecognitionModule.start({ lang: 'tr-TR', interimResults: true, continuous: true });
   };
 
-  const cycleVisibility = () => {
-    const nextMap: Record<string, 'PUBLIC' | 'FOLLOWERS_ONLY' | 'PRIVATE'> = {
-      'PUBLIC': 'FOLLOWERS_ONLY',
-      'FOLLOWERS_ONLY': 'PRIVATE',
-      'PRIVATE': 'PUBLIC'
-    };
-    setSelectedVisibility(nextMap[selectedVisibility]);
-  };
-
-  const handleShareDream = async () => {
-    const cleanDescription = description.replace(/\u200B/g, '').trim();
-    if (!title || !cleanDescription || !selectedTheme) {
-      showAlert('Error', 'Please provide a title, story, and theme.');
+  const handleShare = async () => {
+    const cleanDesc = desc.replace(/​/g, '').trim();
+    if (!title.trim() || !cleanDesc || !theme) {
+      showAlert('Missing information', 'Title, content and theme selection are required.');
       return;
     }
     if (isListening) ExpoSpeechRecognitionModule.stop();
-
     setSharing(true);
     try {
-      const request: CreateDreamRequest = {
-        title,
-        description: cleanDescription,
-        theme: selectedTheme,
-        visibility: selectedVisibility,
-        tagNames: []
+      const req: CreateDreamRequest = {
+        title: title.trim(), description: cleanDesc,
+        theme, visibility: isPublic ? 'PUBLIC' : 'PRIVATE', tagNames: [],
       };
-      const newDream = await createDream(request);
-      setTitle('');
-      setDescription('');
-      setSelectedTheme(null);
-      setSelectedVisibility('PUBLIC');
+      const newDream = await createDream(req);
+      setTitle(''); setDesc(''); setTheme(null); setIsPublic(true);
       onDreamShared(newDream);
-    } catch (error) {
-      showAlert('Error', 'Something went wrong while posting your dream.');
-    } finally {
-      setSharing(false);
-    }
+    } catch {
+      showAlert('Error', 'An error occurred while sharing the dream.');
+    } finally { setSharing(false); }
   };
 
+  const chosen = theme ? THEME_DISPLAY[theme] : null;
+
   return (
-    <View style={styles.shareCard}>
-      <View style={styles.shareInputRow}>
-        <View style={styles.shareAvatarWrapper}>
-           <View style={styles.shareAvatarFallback}>
-             <Ionicons name="person" size={20} color="#B3717A" />
-           </View>
-        </View>
-        
-        <View style={styles.shareInputs}>
-          <TextInput
-            style={styles.shareTitleInput}
-            placeholder="Dream Title..."
-            placeholderTextColor="#94a3b8"
-            value={title}
-            onChangeText={setTitle}
-          />
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-            <TextInput
-              style={styles.shareDescInput}
-              placeholder={isListening ? "Tell your dream 🎤..." : "Write your dream here..."}
-              placeholderTextColor={isListening ? "#B3717A" : "#94a3b8"}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-            />
-            <Animated.View style={[styles.micButtonContainer, { transform: [{ scale: micPulseAnim }] }]}>
-              <TouchableOpacity onPress={handleToggleListening} style={styles.micButton}>
-                <Ionicons name={isListening ? 'stop' : 'mic'} size={18} color={isListening ? '#FF6B6B' : '#94a3b8'} />
+    <LinearGradient
+      colors={['#FFFFFF', '#FDF8F9', C.roseLt]} 
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={styles.creatorCard}
+    >
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        {STARS.map((s, i) => <StarDot key={i} left={s.left} top={s.top} sz={s.sz} />)}
+      </View>
+
+      <View style={styles.crTopRow}>
+        <Text style={styles.crEyebrow}>SHARE YOUR DREAM</Text>
+        <TouchableOpacity
+          style={[styles.privacyBtn, !isPublic && styles.privacyBtnPrivate]}
+          onPress={() => setIsPublic(!isPublic)}
+        >
+          <Ionicons name={isPublic ? 'globe-outline' : 'lock-closed-outline'} size={11}
+            color={isPublic ? C.tm : C.rose} />
+          <Text style={[styles.privacyText, !isPublic && styles.privacyTextPrivate]}>
+            {isPublic ? 'Public' : 'Only Me'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.crTitleRow}>
+        <TextInput style={styles.crTitleInput}
+          placeholder="Give your dream a title..." placeholderTextColor={C.tm}
+          value={title} onChangeText={setTitle} />
+        <Animated.View style={{ transform: [{ scale: micPulse }] }}>
+          <TouchableOpacity style={[styles.micBtn, isListening && styles.micBtnActive]} onPress={handleMic}>
+            <Ionicons name={isListening ? 'stop' : 'mic'} size={16}
+              color={isListening ? 'white' : C.t2} />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+
+      <TextInput style={styles.crDescInput}
+        placeholder="Describe your dream... What you saw, felt, colors, sounds..."
+        placeholderTextColor={C.tm}
+        value={desc} onChangeText={setDesc} multiline numberOfLines={3} />
+
+      <View style={styles.crBottomRow}>
+        <TouchableOpacity
+          style={[styles.themePickerBtn, !!chosen && styles.themePickerBtnChosen]}
+          onPress={() => setThemeOpen(v => !v)}
+        >
+          <Text style={styles.themePickerIcon}>{chosen ? chosen.emoji : '🌙'}</Text>
+          <Text style={[styles.themePickerText, !!chosen && styles.themePickerTextChosen]}>
+            {chosen ? chosen.label : 'Select Theme'}
+          </Text>
+          <Ionicons name={themeOpen ? 'chevron-up' : 'chevron-down'} size={10} color={C.tm} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.postBtn} onPress={handleShare} disabled={sharing}>
+          {sharing ? <ActivityIndicator size="small" color="white" /> : (
+            <><Ionicons name="send" size={13} color="white" /><Text style={styles.postBtnText}>Share</Text></>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {themeOpen && (
+        <View style={styles.themeGrid}>
+          {ORDERED_THEMES.map(t => {
+            const cfg = THEME_DISPLAY[t]; const sel = theme === t;
+            return (
+              <TouchableOpacity key={t}
+                style={[styles.themeGridItem, sel && styles.themeGridItemSel]}
+                onPress={() => { setTheme(t); setThemeOpen(false); }}>
+                <Text style={styles.themeGridEmoji}>{cfg.emoji}</Text>
+                <Text style={[styles.themeGridLabel, sel && styles.themeGridLabelSel]}>{cfg.label}</Text>
               </TouchableOpacity>
-            </Animated.View>
+            );
+          })}
+        </View>
+      )}
+    </LinearGradient>
+  );
+};
+
+// ─ Today's Insight Card ──────────────────────────────────────────
+const TodaysInsightCard = React.memo(({ dream }: { dream: DreamResponse }) => {
+  const router = useRouter();
+  const [liked, setLiked] = useState(dream.isLiked);
+  const [likeCount, setLikeCount] = useState(dream.likeCount);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiDone, setAiDone] = useState(false);
+
+  const handleLike = async () => {
+    const next = !liked;
+    setLiked(next); setLikeCount(p => next ? p + 1 : p - 1);
+    try { await toggleLike(dream.id); }
+    catch { setLiked(!next); setLikeCount(p => next ? p - 1 : p + 1); }
+  };
+
+  const handleAI = () => {
+    if (aiDone) { router.push(`/dream/${dream.id}` as any); return; }
+    setAiLoading(true);
+    setTimeout(() => { setAiLoading(false); setAiDone(true); }, 1500);
+  };
+
+  const td = THEME_DISPLAY[dream.theme] ?? THEME_DISPLAY['CURIOUS'];
+  const d = new Date(dream.createdAt);
+  const dateStr = d.toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'long' })
+    + ' · ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <View style={styles.insightCard}>
+      <LinearGradient colors={[C.rose, C.roseMd, C.roseLt]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.insightAccent} />
+      <View style={styles.insightInner}>
+        <View style={styles.insightTopRow}>
+          <View>
+            <Text style={styles.insightEyebrow}>MY DREAM TODAY</Text>
+            <Text style={styles.insightDatetime}>{dateStr}</Text>
+          </View>
+          <View style={[styles.insightBadge, { backgroundColor: td.badgeBg }]}>
+            <Text style={{ fontSize: 11 }}>{td.emoji}</Text>
+            <Text style={[styles.insightBadgeText, { color: td.badgeC }]}>{td.label}</Text>
           </View>
         </View>
-      </View>
+        <Text style={styles.insightTitle}>"{dream.title}"</Text>
+        <Text style={styles.insightBody} numberOfLines={3}>{dream.description}</Text>
 
-      <View style={styles.shareBottomRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagsContainer}>
-          {DREAM_TAGS.map(tag => {
-            const isSelected = selectedTheme === tag.id;
-            return (
-              <TouchableOpacity
-                key={tag.id}
-                style={[styles.tagPill, isSelected && styles.tagPillSelected]}
-                onPress={() => setSelectedTheme(tag.id)}
-              >
-                <Ionicons name={THEME_TO_ICON[tag.id] as any} size={14} color={isSelected ? '#B3717A' : '#94a3b8'} />
-                <Text style={[styles.tagPillText, isSelected && styles.tagPillTextSelected, { marginLeft: 6 }]}>
-                  {THEME_TO_TURKISH[tag.id]}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </ScrollView>
-      </View>
-
-      <View style={styles.shareActionsRow}>
-        <TouchableOpacity style={styles.visibilityToggle} onPress={cycleVisibility}>
-           <Ionicons name={VISIBILITY_OPTIONS.find(v => v.id === selectedVisibility)?.icon as any} size={16} color="#94a3b8" />
-           <Text style={styles.visibilityText}>{VISIBILITY_OPTIONS.find(v => v.id === selectedVisibility)?.label}</Text>
+        <TouchableOpacity style={styles.aiBtn} onPress={handleAI} activeOpacity={0.85}>
+          <LinearGradient colors={['#1C1320', '#2B1A28', '#1E141C']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]} />
+          <View style={styles.aiBtnLeft}>
+            <View style={styles.aiSparkleWrap}>
+              {aiLoading ? <ActivityIndicator size="small" color={C.roseMd} />
+                : aiDone ? <Ionicons name="checkmark" size={16} color={C.roseMd} />
+                  : <Ionicons name="sparkles" size={18} color={C.roseMd} />}
+            </View>
+            <View>
+              <Text style={styles.aiLabel}>
+                {aiDone ? 'Analysis Ready' : aiLoading ? 'Analyzing...' : 'Analyze Dream'}
+              </Text>
+              <Text style={styles.aiSub}>
+                {aiDone ? 'Tap to view interpretation' : 'AI interpretation · Free'}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={15} color="rgba(253,248,246,0.5)" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.postButton} onPress={handleShareDream} disabled={sharing}>
-          {sharing ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.postButtonText}>Post</Text>}
+      </View>
+
+      <View style={styles.insightFooter}>
+        <View style={styles.insightStats}>
+          <TouchableOpacity style={styles.insightStatBtn} onPress={handleLike}>
+            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={13} color={liked ? C.rose : C.tm} />
+            <Text style={[styles.insightStatText, liked && { color: C.rose }]}>{likeCount}</Text>
+          </TouchableOpacity>
+          <View style={styles.insightStatBtn}>
+            <Ionicons name="chatbubble-outline" size={13} color={C.tm} />
+            <Text style={styles.insightStatText}>{dream.commentCount}</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.insightDetailBtn} onPress={() => router.push(`/dream/${dream.id}` as any)}>
+          <Ionicons name="open-outline" size={13} color={C.tm} />
+          <Text style={styles.insightDetailText}>Details</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
+});
+
+// ─ Empty today state ─────────────────────────────────────────────
+const EmptyTodayCard = () => (
+  <View style={styles.emptyTodayCard}>
+    <Text style={styles.emptyTodayMoon}>🌙</Text>
+    <Text style={styles.emptyTodayTitle}>"You will find your dreams here..."</Text>
+    <Text style={styles.emptyTodaySub}>You haven't recorded a dream today yet.</Text>
+  </View>
+);
+
+// ─ Archive Bridge ─────────────────────────────────────────────────
+const ArchiveBridge = () => {
+  const router = useRouter();
+  return (
+    <TouchableOpacity style={styles.archiveBridge}
+      onPress={() => router.push('/dream-archive' as any)} activeOpacity={0.8}>
+      <View style={styles.archiveLeft}>
+        <View style={styles.archiveIcon}>
+          <Ionicons name="book-outline" size={18} color={C.rose} />
+        </View>
+        <View>
+          <Text style={styles.archiveLabel}>My Dream Archive</Text>
+          <Text style={styles.archiveSub}>See all your dreams</Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={15} color={C.tm} />
+    </TouchableOpacity>
+  );
 };
 
-// --- MAIN SCREEN ---
+// ─ Community Dream Card (Yatay Düzen & Editoryal Tema) ────────────
+const CommunityDreamCard = React.memo(({ dream }: { dream: DreamResponse }) => {
+  const router = useRouter();
+  const [liked, setLiked] = useState(dream.isLiked);
+  const [likeCount, setLikeCount] = useState(dream.likeCount);
+  const td = THEME_DISPLAY[dream.theme] ?? THEME_DISPLAY['CURIOUS'];
 
+  // Mock Avatar selection (stable based on nickname)
+  const mockAvatarUrl = useMemo(() => {
+    if (dream.avatarUrl) return dream.avatarUrl;
+    const charCode = dream.nickname.charCodeAt(0);
+    return MOCK_AVATARS[charCode % MOCK_AVATARS.length];
+  }, [dream.avatarUrl, dream.nickname]);
+
+  const handleLike = async () => {
+    const next = !liked;
+    setLiked(next); setLikeCount(p => next ? p + 1 : p - 1);
+    try { await toggleLike(dream.id); }
+    catch { setLiked(!next); setLikeCount(p => next ? p - 1 : p + 1); }
+  };
+
+  return (
+    <Pressable style={styles.fCard} onPress={() => router.push(`/dream/${dream.id}` as any)}>
+      
+      {/* SOL: Büyük Profil Fotoğrafı Alanı */}
+      <View style={styles.fCardImageContainer}>
+        <Image source={{ uri: mockAvatarUrl }} style={styles.fCardImage} />
+        <LinearGradient
+          colors={['transparent', 'rgba(28,23,20,0.15)', 'rgba(28,23,20,0.6)']}
+          style={styles.fCardImageGradient}
+        />
+      </View>
+
+      {/* SAĞ: Bilgi ve İçerik Alanı */}
+      <View style={styles.fCardContent}>
+        
+        {/* Üst Satır: İsim ve Paylaşım Zamanı */}
+        <View style={styles.fCardHeader}>
+          <Text style={styles.fCardName} numberOfLines={1}>{dream.nickname}</Text>
+          <Text style={styles.fCardTime}>{formatRelativeTime(dream.createdAt)}</Text>
+        </View>
+
+        {/* İnce Yatay Çizgi */}
+        <View style={styles.fCardDivider} />
+
+        {/* Rüya İçeriği */}
+        <Text style={styles.fCardTitle} numberOfLines={1}>"{dream.title}"</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.fCardBody} numberOfLines={3} ellipsizeMode="tail">{dream.description}</Text>
+          {dream.description.length > 80 && (
+            <Text style={styles.fCardReadMoreHint}>Read more →</Text>
+          )}
+        </View>
+
+        {/* Alt Satır: Aksiyonlar ve Tema */}
+        <View style={styles.fCardFooter}>
+          <TouchableOpacity style={styles.fCardAct} onPress={handleLike}>
+            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={16} color={liked ? C.rose : C.t2} />
+            <Text style={[styles.fCardActTxt, liked && { color: C.rose }]}>{likeCount}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.fCardAct} onPress={() => router.push(`/dream/${dream.id}` as any)}>
+            <Ionicons name="chatbubble-outline" size={15} color={C.t2} />
+            <Text style={styles.fCardActTxt}>{dream.commentCount}</Text>
+          </TouchableOpacity>
+          
+          {/* YENİ ŞIK TEMA TASARIMI */}
+          <View style={[styles.fCardChicTheme, { borderColor: td.bar + '30' }]}>
+            <LinearGradient
+              colors={[td.badgeBg, C.white]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Text style={{ fontSize: 11 }}>{td.emoji}</Text>
+            <Text style={[styles.fCardChicThemeTxt, { color: td.badgeC }]}>
+              {td.label.charAt(0).toUpperCase()}{td.label.slice(1).toLowerCase()}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+    </Pressable>
+  );
+});
+
+// ─ Main Screen ───────────────────────────────────────────────────
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [tab, setTab] = useState<'today' | 'community'>('today');
   const [dreams, setDreams] = useState<DreamResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [myLatestDream, setMyLatestDream] = useState<DreamResponse | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
+  const [communityFilter, setCommunityFilter] = useState<'trending' | 'new' | 'match'>('trending');
   const setUnreadDreams = useAppStore(state => state.setUnreadDreams);
 
-  useFocusEffect(
-    useCallback(() => {
-      checkMyLatestDream();
-      // Home ekranına odaklanıldığında rüya bildirimini temizle
-      setUnreadDreams(false);
-    }, [setUnreadDreams])
-  );
+  useFocusEffect(useCallback(() => {
+    checkMyLatestDream();
+    setUnreadDreams(false);
+  }, [setUnreadDreams]));
 
   useEffect(() => {
     loadDreams();
-    // Mevcut kullanıcıyı al (WS filtrelemesi için)
-    getMyProfile().then(p => setCurrentUserId(p.id)).catch(() => {});
+    getMyProfile().then(p => setCurrentUserId(p.id)).catch(() => { });
   }, []);
 
-  // Gerçek zamanlı feed: /topic/dream-feed kanalına abone ol
   useEffect(() => {
     wsService.connect();
     const handler = (newDream: DreamResponse) => {
       setDreams(prev => {
-        // Kendi rüyamız zaten handleDreamShared ile eklendi — tekrar ekleme
-        // currentUserId null ise (henüz yüklenmedi) sadece ID duplicate kontrolü yap
         if (currentUserId && newDream.authorId === currentUserId) return prev;
-        // Duplicate ID kontrolü
         if (prev.some(d => d.id === newDream.id)) return prev;
-        
-        // Başka birinden yeni rüya geldiğinde bidirim noktasını göster
         setUnreadDreams(true);
-        
-        return [newDream, ...prev]; // En üste ekle
+        return [newDream, ...prev];
       });
     };
     wsService.subscribe('/topic/dream-feed', handler);
@@ -480,896 +516,344 @@ export default function HomeScreen() {
   const checkMyLatestDream = async () => {
     try {
       const profile = await getMyProfile();
-      const myDreamsRes = await getUserDreams(profile.id, 0, 1);
-
-      if (myDreamsRes.content.length > 0) {
-        const latest = myDreamsRes.content[0];
-
-        // Check if created TODAY
-        const dDate = new Date(latest.createdAt);
-        const now = new Date();
-        const isToday = dDate.getDate() === now.getDate() &&
-          dDate.getMonth() === now.getMonth() &&
-          dDate.getFullYear() === now.getFullYear();
-
-        if (isToday) {
-          setMyLatestDream(latest);
-        }
-      }
-    } catch (error) {
-      console.log('Failed to fetch my latest dream:', error);
-    }
+      const res = await getUserDreams(profile.id, 0, 1);
+      if (res.content.length > 0) {
+        const latest = res.content[0];
+        const d = new Date(latest.createdAt); const now = new Date();
+        const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        setMyLatestDream(isToday ? latest : null);
+      } else { setMyLatestDream(null); }
+    } catch { }
   };
 
   const loadDreams = async () => {
-    try {
-      const response = await getPublicDreams(0, 20);
-      setDreams(response.content);
-    } catch (error) {
-      console.error('Failed to load dreams:', error);
-      showAlert('Hata', 'Rüyalar yüklenemedi. Lütfen tekrar deneyin.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    try { const res = await getPublicDreams(0, 20); setDreams(res.content); }
+    catch { showAlert('Error', 'Dreams could not be loaded.'); }
+    finally { setLoading(false); setRefreshing(false); }
   };
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    loadDreams();
-    checkMyLatestDream();
-  };
+  const handleRefresh = () => { setRefreshing(true); loadDreams(); checkMyLatestDream(); };
 
   const handleDreamShared = (newDream: DreamResponse) => {
     setMyLatestDream(newDream);
     if (newDream.visibility === 'PUBLIC') {
-      // Duplicate guard: WebSocket'ten önce geldiyse zaten burada ekliyoruz
-      setDreams(prev => {
-        if (prev.some(d => d.id === newDream.id)) return prev;
-        return [newDream, ...prev];
-      });
+      setDreams(prev => prev.some(d => d.id === newDream.id) ? prev : [newDream, ...prev]);
     }
   };
 
-  const handleMyDreamDeleted = (id: string) => {
-    setMyLatestDream(null);
-    setDreams(prev => prev.filter(d => d.id !== id));
-  };
-
-  const handleMyDreamVisibilityChanged = (updated: DreamResponse) => {
-    setMyLatestDream(updated);
-    // Update in public feed too if it exists there
-    setDreams(prev => prev.map(d => d.id === updated.id ? updated : d));
-  };
-
-  const ListHeader = () => (
-      <View style={{ paddingBottom: 24, zIndex: 100, elevation: 100 }}>
-        {/* HEADER */}
-        <View style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}>
-          {/* Spacer to center the title roughly since notification is on the right */}
-          <View style={{ width: 32 }} />
-          <Text style={styles.appTitleBrand}>DREAM-LINK</Text>
-          <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/notifications')}>
-            <Ionicons name="notifications-outline" size={22} color="#94a3b8" />
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <View style={styles.header}>
+        <Text style={styles.logo}>Dream<Text style={styles.logoEm}>Link</Text></Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.hdrBtn}>
+            <Ionicons name="search-outline" size={17} color={C.t2} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.hdrBtn} onPress={() => router.push('/notifications' as any)}>
+            <Ionicons name="notifications-outline" size={17} color={C.t2} />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* COMPOSER SECTION */}
-        <View style={styles.composerSection}>
-          <View style={styles.greetingContainer}>
-            <Text style={styles.greetingTitle}>Good morning{currentUserId ? '' : ''}.</Text>
-            <Text style={styles.greetingSubtitle}>What did you dream last night?</Text>
-          </View>
-          <DreamShareForm onDreamShared={handleDreamShared} styles={styles} />
-        </View>
-
-        {/* PINNED TODAY */}
-        {myLatestDream && (
-          <View style={styles.pinnedSection}>
-            <View style={styles.pinnedHeaderRow}>
-              <View style={styles.pinnedBadge}>
-                <Ionicons name="pin-outline" size={14} color="#B3717A" />
-                <Text style={styles.pinnedBadgeText}>Pinned • Today</Text>
-              </View>
-            </View>
-            <TodayDreamCard
-              dream={myLatestDream}
-              onDelete={handleMyDreamDeleted}
-              onVisibilityChange={handleMyDreamVisibilityChanged}
-            />
-          </View>
-        )}
-
-        {/* COMMUNITY FEED TITLE */}
-        <View style={styles.communityHeaderSection}>
-          <View style={styles.sectionHeaderFlex}>
-            <Text style={styles.sectionTitle}>COMMUNITY DREAMS</Text>
-            <TouchableOpacity style={styles.filterButton}>
-              <Text style={styles.filterText}>Filter</Text>
-              <Ionicons name="options-outline" size={14} color="#B3717A" />
+      <View style={styles.segWrap}>
+        <View style={styles.segTrack}>
+          {(['today', 'community'] as const).map(t => (
+            <TouchableOpacity key={t}
+              style={[styles.segBtn, tab === t && styles.segBtnActive]}
+              onPress={() => setTab(t)}>
+              <Text style={[styles.segBtnTxt, tab === t && styles.segBtnTxtActive]}>
+                {t === 'today' ? 'Today' : 'Community'}
+              </Text>
             </TouchableOpacity>
-          </View>
+          ))}
         </View>
       </View>
-  );
 
-  return (
-    <LinearGradient
-      colors={['#e0f2fe', '#f1f5f9', '#fdf2f2']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-    >
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#B3717A" />
-        </View>
+      {tab === 'today' ? (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.todayContent}
+          showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.rose} colors={[C.rose]} />}>
+          <CreatorCard onDreamShared={handleDreamShared} />
+          {myLatestDream ? <TodaysInsightCard dream={myLatestDream} /> : <EmptyTodayCard />}
+          <ArchiveBridge />
+        </ScrollView>
+      ) : loading ? (
+        <View style={styles.center}><ActivityIndicator size="large" color={C.rose} /></View>
       ) : (
         <FlatList
           data={dreams}
-          renderItem={({ item }) => <DreamCard dream={item} />}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={ListHeader}
-          contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) => <CommunityDreamCard dream={item} />}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.communityContent}
           showsVerticalScrollIndicator={false}
-          extraData={dreams}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#B3717A']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.rose} colors={[C.rose]} />}
+          ListHeaderComponent={
+            <View style={styles.feedHeader}>
+              <Text style={styles.feedTitle}>Most liked this week</Text>
+            </View>
+          }
           ListEmptyComponent={
-            <View style={[styles.emptyContainer, { zIndex: -1, elevation: -1 }]}>
-              <Ionicons name="moon-outline" size={48} color="#94a3b8" />
-              <Text style={styles.emptyText}>No dreams have been shared yet.</Text>
+            <View style={styles.emptyContainer}>
+              <Ionicons name="moon-outline" size={48} color={C.tm} />
+              <Text style={styles.emptyText}>No dreams shared yet.</Text>
             </View>
           }
         />
       )}
-    </LinearGradient>
+    </View>
   );
 }
 
+// ─ Styles ─────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFF',
+  container: { flex: 1, backgroundColor: C.bg },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 22, paddingVertical: 14, backgroundColor: '#FFFFFF',
   },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listContent: {
-    paddingBottom: 120, // Increased to avoid floating bottom nav overlap
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  appTitleBrand: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#B3717A',
-    letterSpacing: 4,
-    textAlign: 'center',
-    flex: 1,
-  },
-  notificationButton: {
-    // text-slate-400
-  },
-  greetingContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 16,
-  },
-  greetingTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#1e293b',
-    letterSpacing: -0.5,
-  },
-  greetingSubtitle: {
-    fontSize: 20,
-    fontWeight: '500',
-    color: '#64748b',
-    marginTop: 8,
+  logo: { fontFamily: QS_BOLD, fontSize: 23, fontWeight: '700', color: C.t1, letterSpacing: -0.3 },
+  logoEm: { color: C.rose, fontStyle: 'normal' },
+  headerRight: { flexDirection: 'row', gap: 8 },
+  hdrBtn: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: C.card,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2,
   },
 
-  composerSection: {
-    marginTop: 12,
-    paddingTop: 8,
-    paddingBottom: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.20)',
+  segWrap: { paddingHorizontal: 22, paddingBottom: 14, backgroundColor: '#FFFFFF' },
+  segTrack: { backgroundColor: C.sand, borderRadius: 14, flexDirection: 'row', padding: 3, gap: 2 },
+  segBtn: { flex: 1, paddingVertical: 8, borderRadius: 11, alignItems: 'center' },
+  segBtnActive: {
+    backgroundColor: C.card,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2,
   },
+  segBtnTxt: { fontSize: 13, fontWeight: '600', color: C.tm },
+  segBtnTxtActive: { color: C.t1, fontWeight: '700' },
 
-  pinnedSection: {
-    marginTop: 18,
-    paddingTop: 14,
-    paddingBottom: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.22)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.22)',
-  },
-  pinnedHeaderRow: {
-    paddingHorizontal: 20,
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  pinnedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(179, 113, 122, 0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(179, 113, 122, 0.14)',
-  },
-  pinnedBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#B3717A',
-    letterSpacing: 0.3,
-  },
+  todayContent: { paddingHorizontal: 20, paddingBottom: 120, gap: 16 },
 
-  communityHeaderSection: {
-    marginTop: 24,
+  creatorCard: {
+    borderRadius: 26, padding: 22, overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)', 
+    shadowColor: C.roseDk, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 20, elevation: 3,
   },
+  crTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  crEyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.3, color: C.rose, textTransform: 'uppercase' },
+  privacyBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5,
+  },
+  privacyBtnPrivate: { backgroundColor: C.roseLt, borderColor: C.roseMd },
+  privacyText: { fontSize: 11, color: C.t2, fontWeight: '600' },
+  privacyTextPrivate: { color: C.roseDk },
+  crTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  crTitleInput: {
+    flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 13, paddingHorizontal: 16, paddingVertical: 12,
+    fontFamily: SERIF, fontSize: 15, fontStyle: 'italic', color: C.t1,
+  },
+  micBtn: {
+    width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  micBtnActive: { backgroundColor: C.rose, borderColor: C.rose },
+  crDescInput: {
+    width: '100%', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 13, paddingHorizontal: 16, paddingVertical: 12,
+    fontSize: 13, fontWeight: '500', color: C.t2, minHeight: 72, marginBottom: 14, textAlignVertical: 'top',
+  },
+  crBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10 },
+  themePickerBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 22, paddingHorizontal: 14, paddingVertical: 9,
+  },
+  themePickerBtnChosen: { backgroundColor: C.roseLt, borderColor: C.roseMd },
+  themePickerIcon: { fontSize: 14 },
+  themePickerText: { fontSize: 12, fontWeight: '600', color: C.t2 },
+  themePickerTextChosen: { color: C.roseDk, fontWeight: '700' },
+  postBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.rose, borderRadius: 22, paddingHorizontal: 20, paddingVertical: 10, shadowColor: C.rose, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4, },
+  postBtnText: { color: 'white', fontSize: 13, fontWeight: '700' },
+  themeGrid: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  themeGridItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)'
+  },
+  themeGridItemSel: { backgroundColor: C.roseLt, borderColor: C.roseMd },
+  themeGridEmoji: { fontSize: 13 },
+  themeGridLabel: { fontSize: 12, color: C.t2, fontWeight: '600' },
+  themeGridLabelSel: { color: C.roseDk, fontWeight: '700' },
 
-  // Share Card (was in DreamShareForm)
-  shareCard: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 16,
+  // Insight Card
+  insightCard: {
+    backgroundColor: C.card, borderRadius: 22, overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 3,
+  },
+  insightAccent: { height: 3 },
+  insightInner: { padding: 20, paddingBottom: 0 },
+  insightTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
+  insightEyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase', color: C.tm, marginBottom: 3 },
+  insightDatetime: { fontSize: 11, fontWeight: '500', color: C.tm },
+  insightBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 5 },
+  insightBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  insightTitle: { fontFamily: SERIF, fontSize: 20, fontWeight: '700', fontStyle: 'italic', color: C.t1, lineHeight: 25, letterSpacing: -0.3, marginBottom: 9 },
+  insightBody: { fontSize: 13, fontWeight: '400', color: C.t2, lineHeight: 22, marginBottom: 16 },
+  aiBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 16, padding: 15, paddingHorizontal: 18, marginBottom: 20, overflow: 'hidden' },
+  aiBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  aiSparkleWrap: { width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(166,63,79,0.18)', alignItems: 'center', justifyContent: 'center' },
+  aiLabel: { fontSize: 13, fontWeight: '700', color: '#FDF8F6', letterSpacing: 0.1 },
+  aiSub: { fontSize: 11, color: 'rgba(253,248,246,0.5)', marginTop: 1 },
+  insightFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.04)', paddingHorizontal: 20, paddingVertical: 13 },
+  insightStats: { flexDirection: 'row', gap: 14 },
+  insightStatBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  insightStatText: { fontSize: 12, fontWeight: '500', color: C.tm },
+  insightDetailBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  insightDetailText: { fontSize: 11, fontWeight: '600', color: C.tm },
+
+  emptyTodayCard: { backgroundColor: C.card, borderRadius: 22, borderWidth: 1.5, borderColor: C.roseMd, borderStyle: 'dashed', padding: 32, alignItems: 'center', gap: 10 },
+  emptyTodayMoon: { fontSize: 36, opacity: 0.5 },
+  emptyTodayTitle: { fontFamily: SERIF, fontSize: 17, fontStyle: 'italic', fontWeight: '700', color: C.t2, textAlign: 'center' },
+  emptyTodaySub: { fontSize: 12, color: C.tm, textAlign: 'center', lineHeight: 18 },
+
+  archiveBridge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.card, borderRadius: 18, padding: 14, paddingHorizontal: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2 },
+  archiveLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  archiveIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.roseLt, alignItems: 'center', justifyContent: 'center' },
+  archiveLabel: { fontSize: 13, fontWeight: '700', color: C.t1 },
+  archiveSub: { fontSize: 11, fontWeight: '500', color: C.tm, marginTop: 1 },
+
+  communityContent: { paddingHorizontal: 20, paddingBottom: 120 },
+  feedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingVertical: 8 },
+  feedTitle: { fontFamily: SERIF, fontSize: 19, fontWeight: '700', fontStyle: 'italic', color: C.t1 },
+  
+  emptyContainer: { alignItems: 'center', marginTop: 60, opacity: 0.6 },
+  emptyText: { marginTop: 16, fontSize: 16, fontWeight: '600', color: C.tm },
+
+  // ── Çizime Uygun Community Dream Card (Yatay Düzen & Editoryal Tema) ───────────
+  fCard: {
+    backgroundColor: C.card,
     borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.8)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 32,
-  },
-  shareInputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
-  },
-  shareAvatarWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(179, 113, 122, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
     overflow: 'hidden',
-  },
-  shareAvatarFallback: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shareInputs: {
-    flex: 1,
-  },
-  shareTitleInput: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1e293b',
-    padding: 0,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-    marginBottom: 8,
-  },
-  shareDescInput: {
-    fontSize: 15,
-    flex: 1,
-    color: '#475569',
-    minHeight: 40,
-    padding: 0,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-  },
-  shareBottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(226, 232, 240, 0.6)',
-    marginTop: 16,
-  },
-  tagsContainer: {
-    gap: 8,
-    paddingRight: 20,
-  },
-  tagPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.8)',
-  },
-  tagPillSelected: {
-    backgroundColor: '#fff',
-    borderColor: '#B3717A',
-  },
-  tagPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  tagPillTextSelected: {
-    color: '#B3717A',
-    fontWeight: '800',
-  },
-  shareActionsRow: {
+    borderColor: 'rgba(0,0,0,0.04)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 16,
+    elevation: 2,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  visibilityToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  visibilityText: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontWeight: '600',
-  },
-  postButton: {
-    backgroundColor: '#B3717A',
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 24,
-    shadowColor: '#B3717A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  postButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  fullScreenOverlay: {
-    position: 'absolute',
-    // Make it huge to cover screen even with scrolling
-    top: -SCREEN_HEIGHT,
-    left: -50, // Extra margin
-    right: -50,
-    bottom: -SCREEN_HEIGHT,
-    backgroundColor: 'transparent',
-    zIndex: 50
-  },
-  shareCardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2D2D3A',
-    marginBottom: 16
-  },
-  input: {
-    backgroundColor: '#F9FAFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#2D2D3A',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F1F3FF'
-  },
-  textArea: {
-    minHeight: 100
-  },
-  dropdownRow: {
-    flexDirection: 'row',
-    gap: 12,
     marginBottom: 16,
-    zIndex: 100, // VERY IMPORTANT for dropdown overlap
-    elevation: 30
+    height: 168,
   },
-  dropdownButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F9FAFF',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F1F3FF',
-    minWidth: 100
+  fCardImageContainer: {
+    width: 105,
+    alignSelf: 'stretch',
+    backgroundColor: '#F9F9F9',
   },
-  dropdownTextPlaceholder: {
-    color: '#C1C8FF'
+  fCardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  dropdownTextSelected: {
-    color: '#7E6BFF',
-    fontWeight: '600',
-    flex: 1
-  },
-  dropdownContent: {
+  fCardImageGradient: {
     position: 'absolute',
-    top: 50, // Position relative to parent View
+    bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F1F3FF',
-    padding: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 50, // Ensure it's very high
-    zIndex: 300
+    height: '50%',
   },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F9FAFF'
+  fCardContent: {
+    flex: 1,
+    padding: 12,
+    flexDirection: 'column',
   },
-  dropdownItemText: {
-    fontSize: 15,
-    color: '#2D2D3A'
-  },
-  shareButton: {
-    backgroundColor: '#7E6BFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#7E6BFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    zIndex: 1 // Below dropdowns
-  },
-  shareButtonDisabled: {
-    backgroundColor: '#C1C8FF',
-    shadowOpacity: 0
-  },
-  shareButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700'
-  },
-
-  // Section Headers
-  sectionContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
-    marginTop: 8,
-    zIndex: 1
-  },
-  sectionHeaderFlex: {
+  fCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
-  sectionTitle: {
+  fCardName: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#94a3b8',
+    fontWeight: '800',
+    color: C.t1,
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    letterSpacing: 0.8,
+    flex: 1,
+    marginRight: 10,
   },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  filterText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#B3717A',
-  },
-  sectionDivider: {
-    display: 'none',
-  },
-
-  // Dream Card
-  dreamCard: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.8)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  dreamHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f1f5f9',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  avatarPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  avatarInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#B3717A'
-  },
-  userDetails: {
-    marginLeft: 12
-  },
-  username: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1e293b'
-  },
-  timestamp: {
-    fontSize: 11,
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  themeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  themeText: {
+  fCardTime: {
     fontSize: 10,
     fontWeight: '700',
+    color: C.tm,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
-    letterSpacing: 1,
   },
-  dreamTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1e293b',
-    marginBottom: 8
+  fCardDivider: {
+    height: 1,
+    backgroundColor: 'rgba(28,23,20,0.04)',
+    marginBottom: 8,
   },
-  dreamDescription: {
+  fCardTitle: {
+    fontFamily: SERIF,
     fontSize: 15,
-    color: '#475569',
-    lineHeight: 24,
-    marginBottom: 20
+    fontWeight: '700',
+    fontStyle: 'italic',
+    color: C.t1,
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
-  interactionBar: {
+  fCardBody: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.t2,
+    lineHeight: 18,
+  },
+  fCardReadMoreHint: {
+    fontSize: 10,
+    color: C.rose,
+    fontWeight: '700',
+    marginTop: 3,
+    letterSpacing: 0.2,
+  },
+  fCardFooter: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(226, 232, 240, 0.5)',
-    paddingTop: 16,
     alignItems: 'center',
+    gap: 12,
   },
-  interactionButton: {
+  fCardAct: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 24,
-    gap: 6
+    gap: 4.5,
   },
-  interactionCount: {
-    fontSize: 13,
+  fCardActTxt: {
+    fontSize: 12,
+    color: C.t2,
     fontWeight: '600',
-    color: '#94a3b8'
   },
-  interactionCountActive: {
-    color: '#B3717A'
-  },
-  matchButton: {
+  fCardChicTheme: {
     marginLeft: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  matchButtonText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#B3717A',
-  },
-
-  // Today Dream Card
-  todayCardContainer: {
-    marginHorizontal: 0,
-    marginBottom: 24,
-  },
-  todayCardGradient: {
-    borderRadius: 24,
-    padding: 0,
+    gap: 4.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4.5,
     borderWidth: 1,
-    borderColor: '#B3717A',
+    overflow: 'hidden',
+    position: 'relative',
   },
-  todayCardContent: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Glassy feel
-    borderRadius: 24,
-    padding: 24,
-  },
-  todayHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16
-  },
-  todayBadgeContainer: {
-    backgroundColor: 'rgba(179, 113, 122, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(179, 113, 122, 0.2)'
-  },
-  todayBadgeText: {
-    color: '#B3717A',
+  fCardChicThemeTxt: {
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  todayMeta: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  todayTimestamp: {
-    color: '#94a3b8',
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  todayTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  todayDescription: {
-    fontSize: 16,
-    color: '#475569',
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  todayFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(226, 232, 240, 0.5)',
-    paddingTop: 16,
-  },
-  todayThemeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6
-  },
-  todayThemeText: {
-    color: '#64748b',
-    fontWeight: '700',
-    fontSize: 11,
-    textTransform: 'uppercase',
-  },
-  todayStats: {
-    flexDirection: 'row',
-    gap: 20
-  },
-  todayStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6
-  },
-  todayStatText: {
-    color: '#94a3b8',
-    fontWeight: '700',
-    fontSize: 13
-  },
-
-  // Menu styles below remain untouched except for color updates if needed, left as is to avoid massive diff
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  menuSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 36,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 20,
-  },
-  menuHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E0E0E0',
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  menuTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#2D2D3A',
-    marginBottom: 16,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    gap: 14,
-  },
-  menuItemDanger: {},
-  menuItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(126, 107, 255, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuItemIconDanger: {
-    backgroundColor: 'rgba(255, 107, 107, 0.08)',
-  },
-  menuItemText: {
-    flex: 1,
-  },
-  menuItemTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2D2D3A',
-  },
-  menuItemTitleDanger: {
-    color: '#FF6B6B',
-  },
-  menuItemSub: {
-    fontSize: 12,
-    color: '#8A8CA8',
-    marginTop: 2,
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: '#F1F3FF',
-    marginVertical: 4,
-  },
-  todayMenuButton: {
-    marginLeft: 8,
-    padding: 2,
-  },
-  menuSectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#8A8CA8',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-    marginTop: 4,
-  },
-  menuItemIconActive: {
-    backgroundColor: '#7E6BFF',
-  },
-  menuItemTitleActive: {
-    color: '#7E6BFF',
-    fontWeight: '700',
-  },
-  radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioOuterActive: {
-    borderColor: '#7E6BFF',
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#7E6BFF',
-  },
-
-  // Empty State
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 60,
-    opacity: 0.6
-  },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#94a3b8'
-  },
-
-  // Voice Input Styles
-  micButtonContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 8,
-  },
-  micButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(179, 113, 122, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  micButtonActive: {
-    backgroundColor: '#FF6B6B',
-  },
-  listeningIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(179, 113, 122, 0.06)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginTop: 12,
-    gap: 10,
-  },
-  listeningDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF6B6B',
-  },
-  listeningText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#B3717A',
-    fontWeight: '600',
+    letterSpacing: 0.5,
+    fontFamily: SERIF,
+    fontStyle: 'italic',
   },
 });

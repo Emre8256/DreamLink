@@ -156,6 +156,7 @@ export interface UserProfileResponse {
   dreamCount: number;
   followerCount: number;
   followingCount: number;
+  likeCount: number;
   isFollowing: boolean;
 }
 

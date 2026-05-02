@@ -3,9 +3,16 @@ import { useColorScheme } from '@/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import {
+  Quicksand_400Regular,
+  Quicksand_500Medium,
+  Quicksand_600SemiBold,
+  Quicksand_700Bold,
+} from '@expo-google-fonts/quicksand';
+import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
+import { AppState, Platform, StatusBar, View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../context/AuthContext';
@@ -24,6 +31,10 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
+    Quicksand_400Regular,
+    Quicksand_500Medium,
+    Quicksand_600SemiBold,
+    Quicksand_700Bold,
   });
 
   useEffect(() => {
@@ -52,6 +63,7 @@ function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (isLoading) return;
@@ -69,6 +81,31 @@ function RootLayoutNav() {
     }
   }, [user, isLoading, segments, router]);
 
+  const applyStatusBarStyle = useCallback(() => {
+    StatusBar.setBarStyle('dark-content', true);
+    if (Platform.OS === 'android') {
+      StatusBar.setBackgroundColor('transparent');
+      StatusBar.setTranslucent(true);
+    }
+  }, []);
+
+  // StatusBar'ın uygulama arka plana gidip geldiğinde VEYA sayfa değiştiğinde sıfırlanmasını önlemek için imperative (zorunlu) ayar
+  useEffect(() => {
+    // İlk açılışta veya sayfa değiştiğinde uygula
+    applyStatusBarStyle();
+
+    // Arka plandan öne geldiğinde tekrar uygula
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        applyStatusBarStyle();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [pathname, applyStatusBarStyle]); // Sayfa değişimlerini (navigation events) dinleyerek her geçişte zorla uygula
+
   if (isLoading) {
     // Auth durumu yüklenirken boş ekran veya loading dönebiliriz.
     // Splash screen zaten gizlendiği için burada bir şey göstermek iyi olabilir.
@@ -78,18 +115,29 @@ function RootLayoutNav() {
   return (
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="chatbox" options={{ headerShown: false }} />
-          <Stack.Screen name="welcome" options={{ headerShown: false }} />
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="register" options={{ headerShown: false }} />
-          <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-          <Stack.Screen name="notifications" options={{ headerShown: false }} />
-          <Stack.Screen name="dream/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="premium-upsell" options={{ headerShown: false, presentation: 'modal' }} />
-        </Stack>
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+          <Stack
+            screenOptions={{
+              contentStyle: { backgroundColor: '#FFFFFF' },
+            }}
+            screenListeners={{
+              focus: () => {
+                applyStatusBarStyle();
+              },
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="chatbox" options={{ headerShown: false }} />
+            <Stack.Screen name="welcome" options={{ headerShown: false }} />
+            <Stack.Screen name="login" options={{ headerShown: false }} />
+            <Stack.Screen name="register" options={{ headerShown: false }} />
+            <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+            <Stack.Screen name="notifications" options={{ headerShown: false }} />
+            <Stack.Screen name="dream/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="premium-upsell" options={{ headerShown: false, presentation: 'modal' }} />
+          </Stack>
+        </View>
       </ThemeProvider>
     </SafeAreaProvider>
   );

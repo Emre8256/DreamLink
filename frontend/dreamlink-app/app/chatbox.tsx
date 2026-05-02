@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
@@ -24,7 +25,24 @@ import {
 } from '../services/api';
 import wsService from '../services/websocket';
 
-/* ─────────────────────────── types ─────────────────────────── */
+/* ─────────────────────────── Tokens & Theme ─────────────────────────── */
+const QS_BOLD = 'Quicksand_700Bold';
+const SERIF = Platform.OS === 'ios' ? 'Georgia' : 'serif';
+
+const C = {
+  primary: '#A63F4F',      // Koyu Rose (Ana Renk)
+  roseLt: '#F7E6E8',       // Açık Rose 
+  roseMd: '#D697A2',       // Orta Rose
+  roseDk: '#7D2D3A',       // Derin Rose
+  bg: '#FFFFFF',
+  sand: '#F8FAFC',         // Karşı tarafın mesaj balonu için açık, tok gri
+  textMain: '#1C1714',
+  textMuted: '#475569',
+  textLight: '#94a3b8',
+  borderLight: 'rgba(0,0,0,0.04)',
+};
+
+/* ─────────────────────────── Types ─────────────────────────── */
 interface ChatMessage {
   id: string;
   text: string;
@@ -33,7 +51,7 @@ interface ChatMessage {
   pending?: boolean;
 }
 
-/* ─────────────────────── helper ─────────────────────────────── */
+/* ─────────────────────── Helper ─────────────────────────────── */
 const showAlert = (title: string, message: string) => {
   if (Platform.OS === 'web') window.alert(`${title}\n${message}`);
   else Alert.alert(title, message);
@@ -51,39 +69,43 @@ const CustomHeader = ({
   avatarUrl?: string | null;
 }) => {
   const router = useRouter();
+
   return (
     <View style={styles.header}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
-          <Ionicons name="chevron-back" size={28} color="#64748b" />
+          <Ionicons name="chevron-back" size={28} color={C.textMain} />
         </TouchableOpacity>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TouchableOpacity onPress={() => router.push('/user-profile')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ position: 'relative' }}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
-              ) : (
-                <View style={[styles.headerAvatar, styles.avatarPlaceholder]}>
-                  <Text style={styles.avatarInitial}>
-                    {title.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.onlineDot} />
-            </View>
-            <View style={{ flexDirection: 'column', marginLeft: 4 }}>
-              <Text style={styles.headerName} numberOfLines={1}>
-                {title}
-              </Text>
-              <Text style={{ fontSize: 12, color: '#64748b' }}>Online</Text>
-            </View>
-          </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ position: 'relative' }}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
+            ) : (
+              <View style={[styles.headerAvatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarInitial}>
+                  {title.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={styles.onlineDot} />
+          </View>
+
+          <View style={{ flexDirection: 'column' }}>
+            <Text style={styles.headerName} numberOfLines={1}>
+              {title}
+            </Text>
+            <Text style={styles.headerStatus}>Online</Text>
+          </View>
         </View>
       </View>
 
-      <TouchableOpacity style={styles.headerBtn}>
-        <Ionicons name="call-outline" size={22} color="#64748b" />
+      <TouchableOpacity
+        style={styles.headerMenuBtn}
+        onPress={() => router.push('/settings' as any)}
+        activeOpacity={0.65}
+      >
+        <Ionicons name="ellipsis-vertical" size={22} color={C.textMain} />
       </TouchableOpacity>
     </View>
   );
@@ -113,6 +135,7 @@ const MessageBubble = ({
 export default function ChatboxScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useAnimatedKeyboard();
+
   const { conversationId, name, avatar } = useLocalSearchParams<{
     conversationId: string;
     name: string;
@@ -123,7 +146,9 @@ export default function ChatboxScreen() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<UserProfileResponse | null>(null);
+
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
+
   const inputDockAnimatedStyle = useAnimatedStyle(() => {
     const lift = Math.max(0, keyboard.height.value - insets.bottom);
     return { transform: [{ translateY: -lift }] };
@@ -132,7 +157,7 @@ export default function ChatboxScreen() {
   /* ── Load user + history ── */
   useEffect(() => {
     if (!conversationId) {
-      showAlert('Error', 'Chat information could not be found.');
+      showAlert('Error', 'Chat information not found.');
       setLoading(false);
       return;
     }
@@ -159,7 +184,7 @@ export default function ChatboxScreen() {
         setMessages(formatted);
       } catch (err) {
         console.error('Failed to load chat', err);
-        showAlert('Error', 'Failed to load chat.');
+        showAlert('Error', 'Chat could not be loaded.');
       } finally {
         setLoading(false);
       }
@@ -226,7 +251,7 @@ export default function ChatboxScreen() {
       );
     } catch (err) {
       console.error('Send failed', err);
-      showAlert('Hata', 'Mesaj gönderilemedi.');
+      showAlert('Error', 'Message could not be sent.');
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setInputText(text);
     }
@@ -236,14 +261,15 @@ export default function ChatboxScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#7E6BFF" />
+        <ActivityIndicator size="large" color={C.primary} />
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <CustomHeader title={name || 'Sohbet'} avatarUrl={avatar} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <CustomHeader title={name || 'Chat'} avatarUrl={avatar} />
 
       <FlatList
         ref={flatListRef}
@@ -253,9 +279,9 @@ export default function ChatboxScreen() {
         ListHeaderComponent={
           <View style={styles.matchBannerContainer}>
             <View style={styles.matchBanner}>
-              <Text style={styles.matchBannerTitle}>DREAM LINK ESTABLISHED</Text>
+              <Text style={styles.matchBannerTitle}>DREAM CONNECTION ESTABLISHED</Text>
               <Text style={styles.matchBannerSub}>
-                You connected through <Text style={{fontWeight: 'bold', fontStyle: 'italic'}}>Neon City Flight</Text>
+                You matched on this dream: <Text style={styles.matchBannerDream}>"Lost City Atlas"</Text>
               </Text>
             </View>
           </View>
@@ -282,15 +308,16 @@ export default function ChatboxScreen() {
         <View style={styles.toolbar}>
           <TouchableOpacity
             style={styles.toolbarAddBtn}
-            onPress={() => showAlert('Add', 'Menü açılacak')}
+            onPress={() => showAlert('Attachment', 'Menu will open')}
+            activeOpacity={0.7}
           >
-            <Ionicons name="add" size={24} color="#64748b" />
+            <Ionicons name="add" size={26} color={C.textLight} />
           </TouchableOpacity>
 
           <TextInput
             style={styles.input}
-            placeholder="Whisper a message..."
-            placeholderTextColor="#94a3b8"
+            placeholder="Type a message..."
+            placeholderTextColor={C.textLight}
             value={inputText}
             onChangeText={setInputText}
             multiline
@@ -299,8 +326,8 @@ export default function ChatboxScreen() {
             blurOnSubmit={false}
           />
 
-          <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
-            <Ionicons name="send" size={18} color="#fff" style={{ transform: [{ rotate: '-45deg' }, { translateX: 2 }] }} />
+          <TouchableOpacity style={styles.sendBtn} onPress={handleSend} activeOpacity={0.85}>
+            <Ionicons name="send" size={16} color="#fff" style={{ transform: [{ rotate: '-45deg' }, { translateX: 2 }] }} />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -312,7 +339,7 @@ export default function ChatboxScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F7FF',
+    backgroundColor: C.bg,
   },
   center: { justifyContent: 'center', alignItems: 'center' },
 
@@ -322,22 +349,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.3)',
+    paddingVertical: 14,
+    backgroundColor: C.bg,
+    zIndex: 10,
   },
   headerBtn: { padding: 4 },
-  headerAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: '#fff' },
+  headerMenuBtn: { padding: 8 },
+  headerAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#fff' },
   avatarPlaceholder: {
-    backgroundColor: '#B3717A',
+    backgroundColor: C.roseMd,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarInitial: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
   onlineDot: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 2,
     right: 0,
     width: 12,
     height: 12,
@@ -346,35 +373,50 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
-  headerName: { fontSize: 16, fontWeight: '700', color: '#1e293b', lineHeight: 20 },
+  headerName: { fontFamily: QS_BOLD, fontSize: 18, fontWeight: '700', color: C.textMain, letterSpacing: -0.2 },
+  headerStatus: { fontSize: 11, color: C.textLight, fontWeight: '600', marginTop: 1 },
 
   /* Match Banner */
   matchBannerContainer: {
     alignItems: 'center',
-    marginBottom: 24,
-    marginTop: 8,
+    marginBottom: 32,
+    marginTop: 12,
   },
   matchBanner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    maxWidth: '85%',
+    backgroundColor: C.bg,
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    maxWidth: '90%',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(179, 113, 122, 0.3)',
+    borderColor: 'rgba(166,63,79,0.15)',
+    shadowColor: C.primary,
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   matchBannerTitle: {
+    fontFamily: QS_BOLD,
     fontSize: 10,
-    fontWeight: '600',
-    color: '#64748b',
-    letterSpacing: 1,
-    marginBottom: 4,
+    fontWeight: '800',
+    color: C.primary,
+    letterSpacing: 1.5,
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
   matchBannerSub: {
     fontSize: 13,
-    color: '#475569',
+    color: C.textMuted,
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  matchBannerDream: {
+    fontFamily: SERIF,
+    fontWeight: '700',
+    fontStyle: 'italic',
+    color: C.textMain,
   },
 
   /* List */
@@ -386,30 +428,35 @@ const styles = StyleSheet.create({
   bubbleRowLeft: { alignItems: 'flex-start' },
   bubble: {
     maxWidth: '75%',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
   bubbleMe: {
-    backgroundColor: '#B3717A',
-    borderBottomRightRadius: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: C.primary,
+    borderBottomRightRadius: 6,
+    shadowColor: C.primary,
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 8,
+    elevation: 3,
   },
   bubbleThem: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderBottomLeftRadius: 4,
+    backgroundColor: C.sand,
+    borderBottomLeftRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: C.borderLight,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
-  bubbleTextMe: { color: '#fff', fontSize: 15, lineHeight: 21 },
-  bubbleTextThem: { color: '#334155', fontSize: 15, lineHeight: 21 },
-  time: { fontSize: 10, marginTop: 4 },
-  timeMe: { color: '#94a3b8', marginRight: 4, textAlign: 'right' },
-  timeThem: { color: '#94a3b8', marginLeft: 4, textAlign: 'left' },
+  bubbleTextMe: { fontFamily: QS_BOLD, color: '#fff', fontSize: 14, fontWeight: '600', lineHeight: 21 },
+  bubbleTextThem: { fontFamily: QS_BOLD, color: C.textMain, fontSize: 14, fontWeight: '600', lineHeight: 21 },
+  time: { fontSize: 10, fontWeight: '700', marginTop: 6, color: C.textLight },
+  timeMe: { marginRight: 6, textAlign: 'right' },
+  timeThem: { marginLeft: 6, textAlign: 'left' },
 
   /* Footer & Toolbar */
   footerContainer: {
@@ -419,18 +466,18 @@ const styles = StyleSheet.create({
   },
   toolbar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    alignItems: 'flex-end', // Çok satırlı olunca aşağı hizalaması için
+    backgroundColor: C.bg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 999,
-    paddingHorizontal: 8,
+    borderColor: C.borderLight,
+    borderRadius: 24,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   toolbarAddBtn: {
     width: 36,
@@ -438,28 +485,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 18,
+    marginBottom: 2, // Hizalama
   },
   input: {
     flex: 1,
     backgroundColor: 'transparent',
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
+    fontFamily: QS_BOLD,
+    fontWeight: '500',
     fontSize: 14,
-    color: '#334155',
-    maxHeight: 100,
-    minHeight: 36,
+    color: C.textMain,
+    maxHeight: 120,
+    minHeight: 38,
     textAlignVertical: 'center',
+    paddingTop: Platform.OS === 'ios' ? 10 : 8,
   },
   sendBtn: {
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#B3717A',
+    backgroundColor: C.primary,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: C.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 3,
   },
 });

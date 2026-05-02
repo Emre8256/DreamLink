@@ -38,6 +38,10 @@
       "usesCleartextTraffic": true,
       "softwareKeyboardLayoutMode": "resize"
     },
+    "androidStatusBar": {
+      "translucent": true,
+      "backgroundColor": "transparent"
+    },
     "web": {
       "bundler": "metro",
       "output": "static",

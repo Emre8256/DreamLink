@@ -42,23 +42,23 @@ export default function RegisterScreen() {
         setError(null);
 
         if (!email || !password || !nickname || !age) {
-            setError('Lütfen zorunlu alanları doldurunuz.');
+            setError('Please fill in all required fields.');
             return;
         }
 
         if (password.length < 6) {
-            setError('Şifre en az 6 karakter olmalıdır.');
+            setError('Password must be at least 6 characters.');
             return;
         }
 
         const parsedAge = parseInt(age);
         if (isNaN(parsedAge) || parsedAge < 13) {
-            setError('Yaşınız 13 veya üzeri olmalıdır.');
+            setError('You must be 13 or older.');
             return;
         }
 
         if (!eulaAccepted) {
-            setError('Devam etmek için Kullanıcı Sözleşmesi onayı zorunludur.');
+            setError('You must accept the Terms & Conditions to continue.');
             return;
         }
 
@@ -81,7 +81,7 @@ export default function RegisterScreen() {
             await login(token);
         } catch (err: any) {
             console.error('Register Error:', err);
-            setError(resolveRegisterError(err, 'Kayıt işlemi başarısız. Bilgilerinizi kontrol edin veya daha sonra tekrar deneyin.'));
+            setError(resolveRegisterError(err, 'Registration failed. Please check your information or try again later.'));
         } finally {
             setLoading(false);
         }
