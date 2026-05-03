@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 import {
   formatRelativeTime,
   getNotifications,
@@ -73,14 +74,17 @@ export default function NotificationsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.root, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}> 
-        <ActivityIndicator size="large" color="#7E6BFF" />
-      </View>
+      <EdgeToEdgeLayout backgroundColor="#F9FAFF" statusBarStyle="dark-content" statusBarBg="#F9FAFF">
+        <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color="#7E6BFF" />
+        </View>
+      </EdgeToEdgeLayout>
     );
   }
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}> 
+    <EdgeToEdgeLayout backgroundColor="#F9FAFF" statusBarStyle="dark-content" statusBarBg="#F9FAFF">
+      <View style={styles.root}> 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
           <Ionicons name="arrow-back" size={22} color="#2D2D3A" />
@@ -138,7 +142,8 @@ export default function NotificationsScreen() {
           />
         }
       />
-    </View>
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 

@@ -11,7 +11,6 @@ import {
   Image,
   Platform,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Switch,
   Text,
@@ -23,6 +22,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
+import { PageContent } from '../../components/PageContent';
 import {
   getMyProfile,
   getUserDreams,
@@ -325,227 +326,272 @@ export default function ProfileScreen() {
     ? journal.slice(0, 5).map(d => ({ ...d, id: String(d.id) }))
     : MOCK_DREAMS;
 
-  // ─── Tab: Plans ───────────────────────────────────────────────────────────
-  const renderPlans = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.premiumTable}>
-        <View style={styles.tableRowHeader}>
-          <Text style={[styles.tableCellLeft, styles.tableHeaderText]}>FEATURE</Text>
-          <Text style={[styles.tableCellCenter, styles.tableHeaderText]}>FREE</Text>
-          <Text style={[styles.tableCellRight, styles.tableHeaderText, { color: C.primary }]}>PREMIUM</Text>
-        </View>
-        {[
-          { label: 'UNLIMITED LIKES' },
-          { label: 'SEE WHO LIKES YOU' },
-          { label: 'ADVANCED FILTERS' },
-          { label: 'ADVANCED DREAM ANALYSIS' },
-          { label: 'UNLIMITED REWINDS' },
-          { label: 'SUBCONSCIOUS WORD CLOUD' },
-          { label: 'PRIORITY MATCHING' },
-        ].map((row, i, arr) => (
-          <View key={row.label} style={[styles.tableRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
-            <Text style={styles.tableCellLeft}>{row.label}</Text>
-            <Text style={styles.tableCellCenter}>✕</Text>
-            <Text style={[styles.tableCellRight, { color: C.primary, fontWeight: '800' }]}>✓</Text>
-          </View>
-        ))}
-        <View style={styles.tableFooter}>
-          <Animated.View style={[styles.upgradeBtnPulse, { transform: [{ scale: upgradePulseAnim }] }]}>
-            <TouchableOpacity style={styles.upgradeBtn} activeOpacity={0.88}>
-              <LinearGradient colors={C.upgrade_vibrant} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.upgradeGradient}>
-                <Text style={styles.upgradeBtnText}>UPGRADE TO PREMIUM</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </View>
+// ─── Tab: Plans ───────────────────────────────────────────────────────────
+const PremiumFeatureCard = ({ icon, title, description, isPremium = false }: { icon: string; title: string; description: string; isPremium?: boolean }) => (
+  <View style={[styles.featureCard, isPremium && styles.featureCardPremium]}>
+    <View style={[styles.featureIconWrap, isPremium && styles.featureIconWrapPremium]}>
+      <Text style={styles.featureIcon}>{icon}</Text>
     </View>
+    <View style={styles.featureContent}>
+      <Text style={[styles.featureTitle, isPremium && styles.featureTitlePremium]}>{title}</Text>
+      <Text style={styles.featureDesc}>{description}</Text>
+    </View>
+    {isPremium && (
+      <View style={styles.featureBadge}>
+        <Text style={styles.featureBadgeText}>PRO</Text>
+      </View>
+    )}
+  </View>
+);
+
+const renderPlans = () => (
+  <View style={styles.tabContent}>
+    <View style={styles.plansHeader}>
+      <Text style={styles.plansHeaderTitle}>Dream-Link Premium</Text>
+      <Text style={styles.plansHeaderSub}>Unlock your full potential</Text>
+    </View>
+    
+    <View style={styles.featuresList}>
+      <PremiumFeatureCard 
+        icon="∞" 
+        title="Unlimited Likes" 
+        description="Connect with as many dreamers as you want without restrictions"
+      />
+      <PremiumFeatureCard 
+        icon="👁️" 
+        title="See Who Likes You" 
+        description="Discover your mutual connections instantly"
+      />
+      <PremiumFeatureCard 
+        icon="🔍" 
+        title="Advanced Filters" 
+        description="Filter by dream themes, chronotype, and personality traits"
+        isPremium
+      />
+      <PremiumFeatureCard 
+        icon="🧠" 
+        title="Deep Dream Analysis" 
+        description="AI-powered psychological insights into your subconscious patterns"
+        isPremium
+      />
+      <PremiumFeatureCard 
+        icon="↩️" 
+        title="Unlimited Rewinds" 
+        description="Go back and revisit anyone you passed on"
+        isPremium
+      />
+      <PremiumFeatureCard 
+        icon="☁️" 
+        title="Subconscious Word Cloud" 
+        description="Visual map of recurring symbols and themes in your dreams"
+        isPremium
+      />
+      <PremiumFeatureCard 
+        icon="⚡" 
+        title="Priority Matching" 
+        description="Your profile appears first to highly compatible dreamers"
+        isPremium
+      />
+    </View>
+    
+    <View style={styles.premiumCTA}>
+      <Animated.View style={[styles.upgradeBtnPulse, { transform: [{ scale: upgradePulseAnim }] }]}>
+        <TouchableOpacity style={styles.upgradeBtn} activeOpacity={0.88}>
+          <LinearGradient colors={['#1a1a1a', '#333333']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.upgradeGradient}>
+            <Text style={styles.upgradeBtnText}>UPGRADE TO PREMIUM</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
+      <Text style={styles.ctaSubtext}>Cancel anytime • 7-day free trial</Text>
+    </View>
+  </View>
+);
+
+// ─── Journal: Dream Entry Card ───────────────────────────────────────
+const DreamEntry = ({ dream }: { dream: any }) => {
+  const dateObj = new Date(dream.createdAt);
+  const dateStr = `${MONTH_NAMES[dateObj.getMonth()].slice(0, 3)} ${dateObj.getDate()}, ${dateObj.getFullYear()}`;
+  const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => router.push(`/dream/${dream.id}`)}
+      style={styles.journalEntryCard}
+    >
+      <View style={styles.entryHeader}>
+        <View style={styles.entryDateBlock}>
+          <Text style={styles.entryDay}>{dateObj.getDate()}</Text>
+          <Text style={styles.entryMonth}>{MONTH_NAMES[dateObj.getMonth()].slice(0, 3)}</Text>
+        </View>
+        <View style={styles.entryMeta}>
+          <Text style={styles.entryTitle} numberOfLines={1}>{dream.title}</Text>
+          <Text style={styles.entryTime}>{timeStr}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color="#CCCCCC" />
+      </View>
+      
+      <Text style={styles.entryDesc} numberOfLines={2}>{dream.description}</Text>
+      
+      <View style={styles.entryFooter}>
+        <View style={styles.entryTag}>
+          <Text style={styles.entryTagText}>{dream.theme || 'DREAM'}</Text>
+        </View>
+        <Text style={styles.entryTapHint}>Tap to read</Text>
+      </View>
+    </TouchableOpacity>
   );
+};
 
-  // ─── YENİ NESİL JOURNAL MİMARİSİ (Staircase / Zigzag) ───
-  const DreamNode = ({ dream, index }: { dream: any; index: number }) => {
-    // Çift indexler solda (0, 2, 4), Tekler sağda (1, 3, 5)
-    const isLeft = index % 2 === 0;
-    const dateObj = new Date(dream.createdAt);
-    const dateStr = `${dateObj.getDate()} ${MONTH_NAMES[dateObj.getMonth()]}`;
+const renderJournal = () => (
+  <View style={styles.tabContent}>
+    <View style={styles.journalHeader}>
+      <Text style={styles.journalHeaderTitle}>Dream Journal</Text>
+      <Text style={styles.journalHeaderSub}>{dreamsToRender.length} {dreamsToRender.length === 1 ? 'entry' : 'entries'}</Text>
+    </View>
 
-    const cardContent = (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => router.push(`/dream/${dream.id}`)}
-        style={styles.zgCard}
+    {dreamsToRender.length > 0 ? (
+      <View style={styles.journalEntries}>
+        {dreamsToRender.map((d: any) => (
+          <DreamEntry key={d.id} dream={d} />
+        ))}
+      </View>
+    ) : (
+      <View style={styles.emptyJournal}>
+        <View style={styles.emptyJournalIconWrap}>
+          <Ionicons name="moon-outline" size={48} color="#CCCCCC" />
+        </View>
+        <Text style={styles.emptyJournalTitle}>No dreams yet</Text>
+        <Text style={styles.emptyJournalSub}>Start recording your dreams to build your journal</Text>
+      </View>
+    )}
+
+    <TouchableOpacity 
+      style={styles.archiveBtn} 
+      activeOpacity={0.7} 
+      onPress={() => router.push('/dream-archive')}
+    >
+      <Text style={styles.archiveBtnText}>View All Entries</Text>
+      <Ionicons name="arrow-forward" size={14} color="#000000" />
+    </TouchableOpacity>
+  </View>
+);
+
+// ─── Tab: Analysis ───────────────────────────────────────────────────────
+const AnalysisStat = ({ label, value, icon }: { label: string; value: string; icon: string }) => (
+  <View style={styles.analysisStatCard}>
+    <Text style={styles.analysisStatIcon}>{icon}</Text>
+    <Text style={styles.analysisStatValue}>{value}</Text>
+    <Text style={styles.analysisStatLabel}>{label}</Text>
+  </View>
+);
+
+const ThemeBar = ({ label, pct }: { label: string; pct: number }) => (
+  <View style={styles.analysisThemeRow}>
+    <Text style={styles.analysisThemeLabel}>{label}</Text>
+    <View style={styles.analysisThemeBarBg}>
+      <View style={[styles.analysisThemeBarFill, { width: `${Math.round(pct * 100)}%` }]} />
+    </View>
+    <Text style={styles.analysisThemePct}>{Math.round(pct * 100)}%</Text>
+  </View>
+);
+
+const PremiumLockOverlay = ({ title, subtitle }: { title: string; subtitle: string }) => (
+  <View style={styles.premiumLockOverlay}>
+    <View style={styles.blurPlaceholder}>
+      <Text style={styles.blurText}>? ? ?</Text>
+    </View>
+    <View style={styles.premiumLockCard}>
+      <View style={styles.premiumLockIcon}>
+        <Ionicons name="diamond-outline" size={24} color="#000000" />
+      </View>
+      <Text style={styles.premiumLockTitle}>{title}</Text>
+      <Text style={styles.premiumLockSub}>{subtitle}</Text>
+      <TouchableOpacity 
+        style={styles.premiumUnlockBtn} 
+        activeOpacity={0.8}
+        onPress={() => router.push('/premium-upsell')}
       >
-        <Text style={[styles.zgDate, { textAlign: isLeft ? 'right' : 'left' }]}>{dateStr}</Text>
-        <Text style={[styles.zgTitle, { textAlign: isLeft ? 'right' : 'left' }]} numberOfLines={2}>
-          {dream.title}
-        </Text>
-        <View style={[styles.zgThemeBadge, { alignSelf: isLeft ? 'flex-end' : 'flex-start' }]}>
-          <Text style={styles.zgThemeText}>{dream.theme || 'DREAM'}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-
-    return (
-      <View style={styles.zgRow}>
-        {/* Sol Kolon */}
-        <View style={styles.zgColSide}>
-          {isLeft && cardContent}
-        </View>
-
-        {/* Merkez Noktası (Timeline Omurgası Üzerindeki Top) */}
-        <View style={styles.zgColCenter}>
-          <View style={styles.zgDotOuter}>
-            <View style={styles.zgDotInner} />
-          </View>
-        </View>
-
-        {/* Sağ Kolon */}
-        <View style={styles.zgColSide}>
-          {!isLeft && cardContent}
-        </View>
-      </View>
-    );
-  };
-
-  const renderJournal = () => (
-    <View style={styles.tabContent}>
-      {/* Header */}
-      <View style={styles.journalHeader}>
-        <View style={styles.journalHeaderLeft}>
-          <Text style={styles.journalHeaderTitle}>Your Dreams</Text>
-          <Text style={styles.journalHeaderSub}>{dreamsToRender.length} entries recorded</Text>
-        </View>
-        <View style={styles.journalMoonIcon}>
-          <Moon size={28} color="#A63F4F" strokeWidth={2} />
-        </View>
-      </View>
-
-      {/* Merdiven Yapılı Timeline */}
-      {dreamsToRender.length > 0 ? (
-        <View style={styles.zgContainer}>
-          {/* Ortadan Geçecek Kesintisiz Çizgi */}
-          <View style={styles.zgCenterLine} />
-          
-          {dreamsToRender.map((d: any, index: number) => (
-            <DreamNode key={d.id} dream={d} index={index} />
-          ))}
-        </View>
-      ) : (
-        <View style={styles.emptyJournal}>
-          <Text style={styles.emptyJournalIcon}>💭</Text>
-          <Text style={styles.emptyJournalTitle}>No dreams recorded yet</Text>
-          <Text style={styles.emptyJournalSub}>Start journaling your dreams to see them here</Text>
-        </View>
-      )}
-
-      <TouchableOpacity style={styles.archiveBtn} activeOpacity={0.7} onPress={() => router.push('/dream-archive')}>
-        <Ionicons name="albums-outline" size={16} color={C.primary} />
-        <Text style={styles.archiveBtnText}>View Dream Archive</Text>
+        <Text style={styles.premiumUnlockBtnText}>Unlock Premium</Text>
       </TouchableOpacity>
     </View>
-  );
+  </View>
+);
 
-  // ─── Tab: Aura Analysis ───────────────────────────────────────────────────
-  const renderAura = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.auraArchetypeCard}>
-        <View style={styles.auraArchetypeAccent} />
-        <View style={{ flex: 1, paddingLeft: 16 }}>
-          <Text style={styles.auraSmallLabel}>DREAM ARCHETYPE</Text>
-          <Text style={styles.auraArchetypeTitle}>Lucid Wanderer</Text>
-          <Text style={styles.auraArchetypeSub}>You navigate dreamscapes with rare intentionality</Text>
-        </View>
-        <Text style={{ fontSize: 32, marginRight: 18 }}>🌙</Text>
+const renderAura = () => (
+  <View style={styles.tabContent}>
+    <View style={styles.analysisHeader}>
+      <Text style={styles.analysisHeaderTitle}>Dream Analysis</Text>
+      <Text style={styles.analysisHeaderSub}>Your subconscious patterns</Text>
+    </View>
+
+    {/* Archetype Section - Free */}
+    <View style={styles.analysisArchetypeCard}>
+      <View style={styles.analysisArchetypeContent}>
+        <Text style={styles.analysisArchetypeLabel}>YOUR ARCHETYPE</Text>
+        <Text style={styles.analysisArchetypeTitle}>The Lucid Wanderer</Text>
+        <Text style={styles.analysisArchetypeDesc}>You navigate dreamscapes with rare intentionality and self-awareness</Text>
       </View>
-
-      <View style={styles.auraStatsRow}>
-        {[
-          { icon: 'moon-outline', label: 'DREAMS/MO', value: '7' },
-          { icon: 'flash-outline', label: 'LUCIDITY', value: 'High' },
-          { icon: 'heart-outline', label: 'MOOD TONE', value: 'Calm' },
-        ].map((s, i) => (
-          <View key={i} style={styles.auraStatCard}>
-            <Ionicons name={s.icon as any} size={16} color={C.primary} style={{ marginBottom: 6 }} />
-            <Text style={styles.auraStatValue}>{s.value}</Text>
-            <Text style={styles.auraStatLabel}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.auraThemesCard}>
-        <Text style={styles.auraSmallLabel}>DOMINANT THEMES</Text>
-        {[
-          { label: 'Exploration', pct: 0.78 },
-          { label: 'Transformation', pct: 0.61 },
-          { label: 'Connection', pct: 0.44 },
-          { label: 'Conflict', pct: 0.29 },
-        ].map(t => (
-          <View key={t.label} style={styles.auraThemeRow}>
-            <Text style={styles.auraThemeLabel}>{t.label}</Text>
-            <View style={styles.auraThemeBarBg}>
-              <View style={[styles.auraThemeBarFill, { width: `${Math.round(t.pct * 100)}%` as any }]} />
-            </View>
-            <Text style={styles.auraThemePct}>{Math.round(t.pct * 100)}%</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.auraLockedWrapper}>
-        <View style={styles.auraGhostContent} pointerEvents="none">
-          <Text style={[styles.auraSmallLabel, { marginBottom: 10 }]}>SUBCONSCIOUS SYMBOLS</Text>
-          <View style={styles.auraWordCloud}>
-            {['shadow', 'light', 'water', 'flight', 'mirror', 'void', 'forest', 'door', 'fire', 'labyrinth'].map(w => (
-              <View key={w} style={styles.auraWordPill}>
-                <Text style={styles.auraWordText}>{w}</Text>
-              </View>
-            ))}
-          </View>
-          <Text style={[styles.auraSmallLabel, { marginTop: 18, marginBottom: 10 }]}>EMOTIONAL RHYTHM</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 5, height: 44 }}>
-            {[0.4, 0.7, 0.5, 0.9, 0.6, 0.8, 0.45].map((h, i) => (
-              <View
-                key={i}
-                style={{
-                  flex: 1,
-                  height: `${Math.round(h * 100)}%` as any,
-                  backgroundColor: i % 2 === 0 ? C.roseLt : C.roseMd,
-                  borderRadius: 4,
-                  opacity: 0.75,
-                }}
-              />
-            ))}
-          </View>
-        </View>
-
-        <LinearGradient colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.88)', 'rgba(255,255,255,1)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
-
-        <View style={styles.auraLockCard}>
-          <Ionicons name="lock-closed-outline" size={22} color={C.primary} style={{ marginBottom: 10 }} />
-          <Text style={styles.auraLockTitle}>Full Analysis is Premium</Text>
-          <Text style={styles.auraLockSub}>Unlock word clouds, emotional rhythm{'\n'}& complete archetype breakdown</Text>
-          <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/premium-upsell')} style={styles.auraLockBtn}>
-            <LinearGradient colors={C.upgrade_vibrant} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.auraLockBtnGradient}>
-              <Text style={styles.auraLockBtnText}>Unlock with Premium</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.analysisArchetypeIcon}>
+        <Text style={{ fontSize: 36 }}>✦</Text>
       </View>
     </View>
-  );
+
+    {/* Stats Row - Free */}
+    <View style={styles.analysisStatsGrid}>
+      <AnalysisStat icon="🌙" label="DREAMS/MO" value="7" />
+      <AnalysisStat icon="⚡" label="LUCIDITY" value="High" />
+      <AnalysisStat icon="🎭" label="MOOD" value="Calm" />
+    </View>
+
+    {/* Dominant Themes - Free */}
+    <View style={styles.analysisThemesSection}>
+      <Text style={styles.analysisSectionTitle}>Dominant Themes</Text>
+      <ThemeBar label="Exploration" pct={0.78} />
+      <ThemeBar label="Transformation" pct={0.61} />
+      <ThemeBar label="Connection" pct={0.44} />
+      <ThemeBar label="Conflict" pct={0.29} />
+    </View>
+
+    {/* Premium Sections - Locked */}
+    <View style={styles.premiumSection}>
+      <Text style={styles.analysisSectionTitle}>Subconscious Symbols</Text>
+      <PremiumLockOverlay 
+        title="Symbol Analysis Locked" 
+        subtitle="Discover recurring symbols in your dreams"
+      />
+    </View>
+
+    <View style={styles.premiumSection}>
+      <Text style={styles.analysisSectionTitle}>Emotional Rhythm</Text>
+      <PremiumLockOverlay 
+        title="Emotional Patterns Locked" 
+        subtitle="Track your dream emotional patterns over time"
+      />
+    </View>
+
+    <View style={styles.premiumSection}>
+      <Text style={styles.analysisSectionTitle}>Archetype Deep Dive</Text>
+      <PremiumLockOverlay 
+        title="Full Breakdown Locked" 
+        subtitle="Complete psychological profile based on your dreams"
+      />
+    </View>
+  </View>
+);
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+    <EdgeToEdgeLayout backgroundColor={C.bg} statusBarStyle="dark-content" statusBarBg={C.bg}>
+      <View style={styles.root}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <TouchableOpacity style={styles.settingsIcon} onPress={() => { setCurrentSubPage(null); setShowSettingsModal(true); }} activeOpacity={0.6}>
+            <Ionicons name="settings-outline" size={24} color={C.textMain} />
+          </TouchableOpacity>
+        </View>
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity style={styles.settingsIcon} onPress={() => { setCurrentSubPage(null); setShowSettingsModal(true); }} activeOpacity={0.6}>
-          <Ionicons name="settings-outline" size={24} color={C.textMain} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: insets.bottom + 8 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: insets.bottom + 8 }} showsVerticalScrollIndicator={false}>
 
         {/* Avatar + Identity */}
         <View style={styles.identitySection}>
@@ -594,27 +640,26 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Pill Tab Menu */}
-        <View style={styles.pillTabBar}>
-          {([
-            { key: 'plans', label: 'Plans' },
-            { key: 'journal', label: 'Journal' },
-            { key: 'aura', label: 'Analysis' },
-          ] as { key: TabKey; label: string }[]).map(tab => {
-            const active = activeTab === tab.key;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                activeOpacity={0.78}
-                onPress={() => setActiveTab(tab.key)}
-                style={[styles.pillTab, active && styles.pillTabActive]}
-              >
-                <Text style={[styles.pillTabText, active && styles.pillTabTextActive]}>{tab.label}</Text>
-                {active && <View style={styles.activeIndicator} />}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+{/* Classic Segmented Tab Menu */}
+  <View style={styles.segmentedTabBar}>
+    {([
+      { key: 'plans', label: 'Plans' },
+      { key: 'journal', label: 'Journal' },
+      { key: 'aura', label: 'Analysis' },
+    ] as { key: TabKey; label: string }[]).map(tab => {
+      const active = activeTab === tab.key;
+      return (
+        <TouchableOpacity
+          key={tab.key}
+          activeOpacity={0.7}
+          onPress={() => setActiveTab(tab.key)}
+          style={[styles.segmentedTab, active && styles.segmentedTabActive]}
+        >
+          <Text style={[styles.segmentedTabText, active && styles.segmentedTabTextActive]}>{tab.label}</Text>
+        </TouchableOpacity>
+      );
+    })}
+  </View>
 
         {/* Tab Content */}
         <View style={styles.section}>
@@ -623,55 +668,57 @@ export default function ProfileScreen() {
           {activeTab === 'aura' && renderAura()}
         </View>
 
-      </ScrollView>
+        </ScrollView>
 
-      {/* Settings Modal */}
-      <Modal visible={showSettingsModal} animationType="slide" transparent={false} presentationStyle="fullScreen" onRequestClose={handleSettingsBack} onShow={() => StatusBar.setBarStyle('dark-content', true)}>
-        <View style={{ flex: 1, backgroundColor: '#FFF' }}>
-          <View style={{ paddingTop: insets.top, paddingHorizontal: 22, paddingBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 0.5, borderBottomColor: C.borderLight, backgroundColor: '#FFF' }}>
-            <TouchableOpacity style={{ width: 36, alignItems: 'flex-start', justifyContent: 'center' }} onPress={handleSettingsBack} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={24} color={C.primary} />
-            </TouchableOpacity>
-            <Text style={{ fontSize: 20, fontFamily: QS_BOLD, fontWeight: '700', color: C.textMain, letterSpacing: -0.3 }}>{settingsHeaderTitle}</Text>
-            <View style={{ width: 36 }} />
-          </View>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: insets.bottom + 28 }} showsVerticalScrollIndicator={false}>
-            {renderSettingsContent()}
-          </ScrollView>
-        </View>
-      </Modal>
+        {/* Settings Modal */}
+        <Modal visible={showSettingsModal} animationType="slide" transparent={false} presentationStyle="fullScreen" onRequestClose={handleSettingsBack}>
+          <EdgeToEdgeLayout backgroundColor="#FFF" statusBarStyle="dark-content" statusBarBg="#FFF">
+            <View style={{ flex: 1, backgroundColor: '#FFF' }}>
+              <View style={{ paddingHorizontal: 22, paddingBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 0.5, borderBottomColor: C.borderLight, backgroundColor: '#FFF' }}>
+                <TouchableOpacity style={{ width: 36, alignItems: 'flex-start', justifyContent: 'center' }} onPress={handleSettingsBack} activeOpacity={0.7}>
+                  <Ionicons name="chevron-back" size={24} color={C.primary} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 20, fontFamily: QS_BOLD, fontWeight: '700', color: C.textMain, letterSpacing: -0.3 }}>{settingsHeaderTitle}</Text>
+                <View style={{ width: 36 }} />
+              </View>
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: insets.bottom + 28 }} showsVerticalScrollIndicator={false}>
+                {renderSettingsContent()}
+              </ScrollView>
+            </View>
+          </EdgeToEdgeLayout>
+        </Modal>
 
-      {/* Delete Modals */}
-      <Modal transparent visible={showDeleteModal} animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
-        <View style={MD.backdrop}>
-          <View style={MD.card}>
-            <Text style={MD.title}>Delete account?</Text>
-            <Text style={MD.txt}>This action cannot be undone. All your profile data, dreams and related info will be permanently deleted.</Text>
-            <View style={MD.actions}>
-              <TouchableOpacity style={MD.cancel} onPress={() => setShowDeleteModal(false)}><Text style={MD.cancelTxt}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={MD.danger} onPress={() => { setShowDeleteModal(false); setShowFinalDeleteModal(true); }}><Text style={MD.dangerTxt}>Continue</Text></TouchableOpacity>
+        {/* Delete Modals */}
+        <Modal transparent visible={showDeleteModal} animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
+          <View style={MD.backdrop}>
+            <View style={MD.card}>
+              <Text style={MD.title}>Delete account?</Text>
+              <Text style={MD.txt}>This action cannot be undone. All your profile data, dreams and related info will be permanently deleted.</Text>
+              <View style={MD.actions}>
+                <TouchableOpacity style={MD.cancel} onPress={() => setShowDeleteModal(false)}><Text style={MD.cancelTxt}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity style={MD.danger} onPress={() => { setShowDeleteModal(false); setShowFinalDeleteModal(true); }}><Text style={MD.dangerTxt}>Continue</Text></TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      <Modal transparent visible={showFinalDeleteModal} animationType="fade" onRequestClose={() => setShowFinalDeleteModal(false)}>
-        <View style={MD.backdrop}>
-          <View style={MD.card}>
-            <Text style={MD.title}>Final Confirmation</Text>
-            <Text style={MD.txt}>Type DELETE below to confirm.</Text>
-            <TextInput style={MD.input} autoCapitalize="characters" value={confirmText} onChangeText={setConfirmText} editable={!deleting} placeholder="DELETE" placeholderTextColor="#A3A8C2" />
-            <View style={MD.actions}>
-              <TouchableOpacity style={MD.cancel} onPress={() => { setShowFinalDeleteModal(false); setConfirmText(''); }} disabled={deleting}><Text style={MD.cancelTxt}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={MD.danger} onPress={handleDeleteAccount} disabled={deleting}>
-                {deleting ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={MD.dangerTxt}>Delete Permanently</Text>}
-              </TouchableOpacity>
+        <Modal transparent visible={showFinalDeleteModal} animationType="fade" onRequestClose={() => setShowFinalDeleteModal(false)}>
+          <View style={MD.backdrop}>
+            <View style={MD.card}>
+              <Text style={MD.title}>Final Confirmation</Text>
+              <Text style={MD.txt}>Type DELETE below to confirm.</Text>
+              <TextInput style={MD.input} autoCapitalize="characters" value={confirmText} onChangeText={setConfirmText} editable={!deleting} placeholder="DELETE" placeholderTextColor="#A3A8C2" />
+              <View style={MD.actions}>
+                <TouchableOpacity style={MD.cancel} onPress={() => { setShowFinalDeleteModal(false); setConfirmText(''); }} disabled={deleting}><Text style={MD.cancelTxt}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity style={MD.danger} onPress={handleDeleteAccount} disabled={deleting}>
+                  {deleting ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={MD.dangerTxt}>Delete Permanently</Text>}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-
-    </View>
+        </Modal>
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 
@@ -684,7 +731,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 22,
-    paddingBottom: 14,
+    paddingVertical: 14,
     backgroundColor: C.bg,
   },
   headerTitle: {
@@ -719,87 +766,249 @@ const styles = StyleSheet.create({
   tokenLabel: { fontFamily: QS_BOLD, fontSize: 9, color: C.textLight, fontWeight: '800', letterSpacing: 0.8, marginTop: 2 },
   tokenValue: { fontFamily: QS_BOLD, fontSize: 18, color: C.textMain, fontWeight: '800' },
 
-  pillTabBar: { flexDirection: 'row', marginHorizontal: 22, marginBottom: 24, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  pillTab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, position: 'relative' },
-  pillTabActive: {},
-  pillTabText: { fontFamily: QS_BOLD, fontSize: 16, fontWeight: '600', color: C.textLight, letterSpacing: 0.2 },
-  pillTabTextActive: { color: C.primary, fontWeight: '800' },
-  activeIndicator: { position: 'absolute', bottom: -1, width: '45%', height: 3, backgroundColor: C.primary, borderRadius: 20, shadowColor: C.primary, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
+  // ─── Classic Segmented Tab Bar ───
+  segmentedTabBar: { 
+    flexDirection: 'row', 
+    marginHorizontal: 22, 
+    marginBottom: 24, 
+    backgroundColor: '#F5F5F5', 
+    borderRadius: 10, 
+    padding: 4,
+  },
+  segmentedTab: { 
+    flex: 1, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 12, 
+    borderRadius: 8,
+  },
+  segmentedTabActive: { 
+    backgroundColor: '#FFFFFF', 
+    shadowColor: '#000', 
+    shadowOpacity: 0.08, 
+    shadowRadius: 8, 
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  segmentedTabText: { fontFamily: QS_BOLD, fontSize: 14, fontWeight: '700', color: '#999999', letterSpacing: 0.3 },
+  segmentedTabTextActive: { color: '#000000', fontWeight: '800' },
 
   section: { paddingHorizontal: 22, marginBottom: 10 },
   tabContent: {},
 
   // ─── Plans Tab ───
-  premiumTable: { backgroundColor: '#FFFFFF', borderRadius: 20, paddingTop: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 3 },
-  tableRowHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: C.borderLight, paddingVertical: 14 },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: 'rgba(228,228,231,0.5)', paddingVertical: 15 },
-  tableHeaderText: { fontFamily: QS_BOLD, fontSize: FONT_SIZES.small_label - 1, fontWeight: '800', color: C.textLight, letterSpacing: 1.2 },
-  tableCellLeft: { flex: 2.2, paddingLeft: 16, fontFamily: QS_BOLD, fontSize: FONT_SIZES.table, fontWeight: '700', color: C.textMain, letterSpacing: 0.6, lineHeight: 18 },
-  tableCellCenter: { flex: 0.9, textAlign: 'center', fontFamily: QS_BOLD, fontSize: FONT_SIZES.table + 1, color: C.textLight, fontWeight: '700' },
-  tableCellRight: { flex: 0.9, textAlign: 'center', fontFamily: QS_BOLD, fontSize: FONT_SIZES.table + 1, color: C.primary, fontWeight: '700' },
-  tableFooter: { paddingTop: 14, paddingBottom: 24, alignItems: 'center' },
-  upgradeBtnPulse: { alignSelf: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 4, borderRadius: 14, backgroundColor: '#FFFFFF' },
-  upgradeBtn: { borderRadius: 14, overflow: 'hidden' },
-  upgradeGradient: { paddingVertical: 14, paddingHorizontal: 40, alignItems: 'center', justifyContent: 'center' },
-  upgradeBtnText: { fontFamily: QS_BOLD, fontSize: FONT_SIZES.button_small, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1 },
+  plansHeader: { marginBottom: 20, paddingHorizontal: 4 },
+  plansHeaderTitle: { fontFamily: QS_BOLD, fontSize: 24, fontWeight: '800', color: '#000000', letterSpacing: -0.5 },
+  plansHeaderSub: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#999999', marginTop: 4 },
+  
+  featuresList: { gap: 12 },
+  featureCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+    shadowColor: '#000',
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  featureCardPremium: {
+    borderColor: '#000000',
+    backgroundColor: '#FAFAFA',
+  },
+  featureIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  featureIconWrapPremium: {
+    backgroundColor: '#000000',
+  },
+  featureIcon: { fontSize: 20, color: '#000000' },
+  featureContent: { flex: 1 },
+  featureTitle: { fontFamily: QS_BOLD, fontSize: 15, fontWeight: '700', color: '#333333', marginBottom: 3 },
+  featureTitlePremium: { color: '#000000' },
+  featureDesc: { fontFamily: QS_MEDIUM, fontSize: 13, color: '#888888', lineHeight: 18 },
+  featureBadge: {
+    backgroundColor: '#000000',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  featureBadgeText: { fontFamily: QS_BOLD, fontSize: 9, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1 },
+  
+  premiumCTA: { marginTop: 28, alignItems: 'center', paddingBottom: 20 },
+  upgradeBtnPulse: { alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4, borderRadius: 12, backgroundColor: '#FFFFFF' },
+  upgradeBtn: { borderRadius: 12, overflow: 'hidden' },
+  upgradeGradient: { paddingVertical: 16, paddingHorizontal: 48, alignItems: 'center', justifyContent: 'center' },
+  upgradeBtnText: { fontFamily: QS_BOLD, fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1.5 },
+  ctaSubtext: { fontFamily: QS_MEDIUM, fontSize: 12, color: '#999999', marginTop: 12 },
 
-  // ─── YENİ NESİL JOURNAL (Zigzag/Staircase) ───
-  journalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, paddingHorizontal: 4 },
-  journalHeaderLeft: { flex: 1 },
-  journalHeaderTitle: { fontFamily: QS_BOLD, fontSize: 22, fontWeight: '800', color: '#1C1714', letterSpacing: -0.5 },
-  journalHeaderSub: { fontFamily: QS_MEDIUM, fontSize: 14, color: C.textLight, marginTop: 2 },
-  journalMoonIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: C.roseLt, alignItems: 'center', justifyContent: 'center' },
+// ─── Journal Tab ───
+  journalHeader: { marginBottom: 20, paddingHorizontal: 4 },
+  journalHeaderTitle: { fontFamily: QS_BOLD, fontSize: 24, fontWeight: '800', color: '#000000', letterSpacing: -0.5 },
+  journalHeaderSub: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#999999', marginTop: 4 },
   
-  zgContainer: { position: 'relative', width: '100%', paddingVertical: 10 },
-  zgCenterLine: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 2, marginLeft: -1, backgroundColor: '#F1F5F9', borderRadius: 2 },
-  zgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
-  zgColSide: { flex: 1 },
-  zgColCenter: { width: 34, alignItems: 'center', justifyContent: 'center' },
-  
-  zgDotOuter: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: C.roseMd, alignItems: 'center', justifyContent: 'center', shadowColor: C.primary, shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  zgDotInner: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.primary },
-  
-  zgCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  zgDate: { fontFamily: QS_BOLD, fontSize: 11, color: C.primary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
-  zgTitle: { fontFamily: SERIF, fontSize: 15, fontWeight: '700', fontStyle: 'italic', color: '#111111', marginBottom: 8, lineHeight: 20 },
-  zgThemeBadge: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  zgThemeText: { fontFamily: QS_BOLD, fontSize: 9, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
-  
-  emptyJournal: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20 },
-  emptyJournalIcon: { fontSize: 48, marginBottom: 16 },
-  emptyJournalTitle: { fontFamily: QS_BOLD, fontSize: 18, fontWeight: '700', color: '#1C1714', marginBottom: 6 },
-  emptyJournalSub: { fontFamily: QS_MEDIUM, fontSize: 14, color: C.textLight, textAlign: 'center', lineHeight: 20 },
+  journalEntries: { gap: 12 },
+  journalEntryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+    shadowColor: '#000',
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  entryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  entryDateBlock: {
+    width: 44,
+    height: 52,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  entryDay: { fontFamily: QS_BOLD, fontSize: 20, fontWeight: '800', color: '#000000', lineHeight: 24 },
+  entryMonth: { fontFamily: QS_BOLD, fontSize: 10, fontWeight: '700', color: '#888888', textTransform: 'uppercase', letterSpacing: 0.5 },
+  entryMeta: { flex: 1 },
+  entryTitle: { fontFamily: QS_BOLD, fontSize: 16, fontWeight: '700', color: '#000000', marginBottom: 2 },
+  entryTime: { fontFamily: QS_MEDIUM, fontSize: 12, color: '#999999' },
+  entryDesc: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#666666', lineHeight: 20, marginBottom: 12 },
+  entryFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  entryTag: {
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  entryTagText: { fontFamily: QS_BOLD, fontSize: 10, fontWeight: '700', color: '#666666', letterSpacing: 0.5, textTransform: 'uppercase' },
+  entryTapHint: { fontFamily: QS_MEDIUM, fontSize: 12, color: '#CCCCCC' },
 
-  archiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginTop: 10, marginBottom: 10, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 50, backgroundColor: '#FFFFFF', gap: 8, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  archiveBtnText: { fontFamily: QS_BOLD, fontSize: 14, fontWeight: '700', color: C.primary },
+  emptyJournal: { alignItems: 'center', paddingVertical: 50, paddingHorizontal: 20 },
+  emptyJournalIconWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  emptyJournalTitle: { fontFamily: QS_BOLD, fontSize: 18, fontWeight: '700', color: '#000000', marginBottom: 6 },
+  emptyJournalSub: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#999999', textAlign: 'center', lineHeight: 20 },
 
-  // ─── Aura Tab ───
-  auraSmallLabel: { fontFamily: QS_BOLD, fontSize: 10, fontWeight: '800', color: C.textLight, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 },
-  auraArchetypeCard: { backgroundColor: '#fff', borderRadius: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', paddingVertical: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
-  auraArchetypeAccent: { width: 4, alignSelf: 'stretch', backgroundColor: C.primary, borderTopRightRadius: 3, borderBottomRightRadius: 3 },
-  auraArchetypeTitle: { fontFamily: SERIF, fontSize: 19, fontStyle: 'italic', color: C.textMain, fontWeight: '700', marginBottom: 4, lineHeight: 24 },
-  auraArchetypeSub: { fontFamily: QS_BOLD, fontSize: 12, color: C.textMuted, lineHeight: 17 },
-  auraStatsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  auraStatCard: { flex: 1, backgroundColor: C.sand, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', borderWidth: 1, borderColor: C.borderLight },
-  auraStatValue: { fontFamily: QS_BOLD, fontSize: 16, fontWeight: '800', color: C.textMain, marginBottom: 2 },
-  auraStatLabel: { fontFamily: QS_BOLD, fontSize: 9, fontWeight: '700', color: C.textLight, letterSpacing: 1.1, textTransform: 'uppercase', textAlign: 'center' },
-  auraThemesCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
-  auraThemeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 },
-  auraThemeLabel: { fontFamily: QS_BOLD, fontSize: 12, fontWeight: '600', color: C.textMuted, width: 100 },
-  auraThemeBarBg: { flex: 1, height: 6, backgroundColor: C.roseLt, borderRadius: 3, overflow: 'hidden' },
-  auraThemeBarFill: { height: '100%', backgroundColor: C.primary, borderRadius: 3 },
-  auraThemePct: { fontFamily: QS_BOLD, fontSize: 11, fontWeight: '700', color: C.textLight, width: 32, textAlign: 'right' },
-  auraLockedWrapper: { position: 'relative', minHeight: 200 },
-  auraGhostContent: { padding: 4 },
-  auraWordCloud: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 4 },
-  auraWordPill: { backgroundColor: C.roseLt, paddingHorizontal: 13, paddingVertical: 6, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(166,63,79,0.1)' },
-  auraWordText: { fontFamily: QS_BOLD, fontSize: 11, fontWeight: '700', color: C.primary },
-  auraLockCard: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderRadius: 20, padding: 22, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(166,63,79,0.08)', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: -2 }, elevation: 6 },
-  auraLockTitle: { fontFamily: QS_BOLD, fontSize: 15, fontWeight: '700', color: C.textMain, marginBottom: 6, letterSpacing: -0.2 },
-  auraLockSub: { fontFamily: QS_BOLD, fontSize: 12, color: C.textMuted, lineHeight: 18, textAlign: 'center', marginBottom: 16 },
-  auraLockBtn: { borderRadius: 12, overflow: 'hidden', alignSelf: 'stretch' },
-  auraLockBtnGradient: { paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
-  auraLockBtnText: { fontFamily: QS_BOLD, fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  archiveBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    alignSelf: 'center', 
+    marginTop: 24, 
+    paddingVertical: 14, 
+    paddingHorizontal: 28, 
+    borderRadius: 10, 
+    backgroundColor: '#000000', 
+    gap: 8,
+  },
+  archiveBtnText: { fontFamily: QS_BOLD, fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+
+  // ─── Analysis Tab ───
+  analysisHeader: { marginBottom: 20, paddingHorizontal: 4 },
+  analysisHeaderTitle: { fontFamily: QS_BOLD, fontSize: 24, fontWeight: '800', color: '#000000', letterSpacing: -0.5 },
+  analysisHeaderSub: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#999999', marginTop: 4 },
+  
+  analysisArchetypeCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#000000',
+    marginBottom: 16,
+  },
+  analysisArchetypeContent: { flex: 1 },
+  analysisArchetypeLabel: { fontFamily: QS_BOLD, fontSize: 10, fontWeight: '800', color: '#666666', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 },
+  analysisArchetypeTitle: { fontFamily: QS_BOLD, fontSize: 20, fontWeight: '800', color: '#000000', marginBottom: 4 },
+  analysisArchetypeDesc: { fontFamily: QS_MEDIUM, fontSize: 13, color: '#666666', lineHeight: 18 },
+  analysisArchetypeIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 14,
+  },
+  
+  analysisStatsGrid: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  analysisStatCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+  },
+  analysisStatIcon: { fontSize: 20, marginBottom: 6 },
+  analysisStatValue: { fontFamily: QS_BOLD, fontSize: 18, fontWeight: '800', color: '#000000', marginBottom: 2 },
+  analysisStatLabel: { fontFamily: QS_BOLD, fontSize: 9, fontWeight: '700', color: '#999999', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center' },
+  
+  analysisThemesSection: { marginBottom: 24 },
+  analysisSectionTitle: { fontFamily: QS_BOLD, fontSize: 14, fontWeight: '800', color: '#000000', marginBottom: 14, letterSpacing: 0.5 },
+  analysisThemeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
+  analysisThemeLabel: { fontFamily: QS_BOLD, fontSize: 13, fontWeight: '600', color: '#333333', width: 90 },
+  analysisThemeBarBg: { flex: 1, height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, overflow: 'hidden' },
+  analysisThemeBarFill: { height: '100%', backgroundColor: '#000000', borderRadius: 3 },
+  analysisThemePct: { fontFamily: QS_BOLD, fontSize: 12, fontWeight: '700', color: '#999999', width: 36, textAlign: 'right' },
+  
+  premiumSection: { marginBottom: 20 },
+  premiumLockOverlay: { marginTop: 8 },
+  blurPlaceholder: {
+    height: 80,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: -40,
+    zIndex: 1,
+  },
+  blurText: { fontFamily: QS_BOLD, fontSize: 24, color: '#DDDDDD', letterSpacing: 4 },
+  premiumLockCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#000000',
+    position: 'relative',
+    zIndex: 2,
+  },
+  premiumLockIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  premiumLockTitle: { fontFamily: QS_BOLD, fontSize: 16, fontWeight: '700', color: '#000000', marginBottom: 4 },
+  premiumLockSub: { fontFamily: QS_MEDIUM, fontSize: 13, color: '#999999', textAlign: 'center', marginBottom: 16, lineHeight: 18 },
+  premiumUnlockBtn: {
+    backgroundColor: '#000000',
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+  },
+  premiumUnlockBtnText: { fontFamily: QS_BOLD, fontSize: 14, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 },
 
   // Delete Modal Styles
   MD_backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.42)', justifyContent: 'center', alignItems: 'center', padding: 18 },

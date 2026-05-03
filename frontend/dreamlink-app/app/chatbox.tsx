@@ -12,9 +12,9 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
-  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import {
   getMessages,
@@ -267,9 +267,9 @@ export default function ChatboxScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
-      <CustomHeader title={name || 'Chat'} avatarUrl={avatar} />
+    <EdgeToEdgeLayout backgroundColor={C.bg} statusBarStyle="dark-content" statusBarBg={C.bg}>
+      <View style={styles.container}>
+        <CustomHeader title={name || 'Chat'} avatarUrl={avatar} />
 
       <FlatList
         ref={flatListRef}
@@ -331,7 +331,8 @@ export default function ChatboxScreen() {
           </TouchableOpacity>
         </View>
       </Animated.View>
-    </View>
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 

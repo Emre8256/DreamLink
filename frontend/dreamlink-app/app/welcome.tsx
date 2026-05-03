@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Dimensions,
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 
 const { width, height } = Dimensions.get('window');
 
@@ -82,23 +83,24 @@ export default function WelcomeScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            {/* Background Layer */}
-            <View style={StyleSheet.absoluteFill}>
-                <Animated.Image
-                    source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB77wcWuewCTlP_OPp9rBxds8qQ4wYBYtBT7NrqKbrBnbp5-Cm9WkiR_HmKu3FBiVt-XCW4IEEmlzR4NKTeeF2THz40-hlIX0ZGAz0UIBRbkapfToRlKiN3qjbuaZXjBflre6GWHSylAa3Hyxe3ywUx765BqkxZIbAc_YCHLliEiqOvTraH7AIPgvuC0x70cthUpa9GFVGLiPmVruKNoxX602-7CY__aWSCKlvnQ1DKcSzYxWgjZ018COL1uv87CZ5vc-hCJD7nY-w' }}
-                    style={[styles.backgroundImage, { transform: [{ scale: scaleAnim }] }]}
-                    resizeMode="cover"
-                />
-                <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.8)', '#000000']}
-                    locations={[0, 0.6, 1]}
-                    style={StyleSheet.absoluteFill}
-                />
-            </View>
+        <EdgeToEdgeLayout backgroundColor="#121212" statusBarStyle="light-content" statusBarBg="#121212">
+            <View style={styles.container}>
+                {/* Background Layer */}
+                <View style={StyleSheet.absoluteFill}>
+                    <Animated.Image
+                        source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB77wcWuewCTlP_OPp9rBxds8qQ4wYBYtBT7NrqKbrBnbp5-Cm9WkiR_HmKu3FBiVt-XCW4IEEmlzR4NKTeeF2THz40-hlIX0ZGAz0UIBRbkapfToRlKiN3qjbuaZXjBflre6GWHSylAa3Hyxe3ywUx765BqkxZIbAc_YCHLliEiqOvTraH7AIPgvuC0x70cthUpa9GFVGLiPmVruKNoxX602-7CY__aWSCKlvnQ1DKcSzYxWgjZ018COL1uv87CZ5vc-hCJD7nY-w' }}
+                        style={[styles.backgroundImage, { transform: [{ scale: scaleAnim }] }]}
+                        resizeMode="cover"
+                    />
+                    <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.8)', '#000000']}
+                        locations={[0, 0.6, 1]}
+                        style={StyleSheet.absoluteFill}
+                    />
+                </View>
 
-            {/* Main Content */}
-            <View style={[styles.main, { paddingTop: insets.top + 64, paddingBottom: Platform.OS === 'ios' ? insets.bottom + 48 : 48 }]}>
+                {/* Main Content */}
+                <View style={[styles.main, { paddingTop: 64, paddingBottom: Platform.OS === 'ios' ? insets.bottom + 48 : 48 }]}>
                 {/* Top Branding */}
                 <Animated.View style={[styles.brandingContainer, { opacity: fadeAnim, transform: [{ translateY: translateYAnim }] }]}>
                     <Animated.Text style={[styles.logo, glowStyle]}>DREAM-LINK</Animated.Text>
@@ -129,8 +131,9 @@ export default function WelcomeScreen() {
                         </View>
                     </View>
                 </Animated.View>
+                </View>
             </View>
-        </View>
+        </EdgeToEdgeLayout>
     );
 }
 

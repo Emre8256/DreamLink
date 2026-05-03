@@ -7,13 +7,13 @@ import {
   Image,
   Platform,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 import { router, Stack } from 'expo-router';
 import { getMyProfile, UserProfileResponse } from '../services/api';
 import { 
@@ -77,10 +77,12 @@ export default function ProfilePreviewScreen() {
 
   if (loading) {
     return (
-      <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator size="large" color={C.primary} />
-      </View>
+      <EdgeToEdgeLayout backgroundColor={C.pageBg} statusBarStyle="dark-content" statusBarBg={C.pageBg}>
+        <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Stack.Screen options={{ headerShown: false }} />
+          <ActivityIndicator size="large" color={C.primary} />
+        </View>
+      </EdgeToEdgeLayout>
     );
   }
 
@@ -92,12 +94,12 @@ export default function ProfilePreviewScreen() {
   const photos     = profile?.photos?.length ? profile.photos : MOCK_EXTRA_DATA.photos;
 
   return (
-    <View style={s.root}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="dark-content" backgroundColor={C.pageBg} />
+    <EdgeToEdgeLayout backgroundColor={C.pageBg} statusBarStyle="dark-content" statusBarBg={C.pageBg}>
+      <View style={s.root}>
+        <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ─── Header ─── */}
-      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        {/* ─── Header ─── */}
+        <View style={[s.header, { paddingTop: 10 }]}>
         <TouchableOpacity style={s.closeBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <Ionicons name="close" size={22} color={C.textMain} />
         </TouchableOpacity>
@@ -251,7 +253,8 @@ export default function ProfilePreviewScreen() {
         </TouchableOpacity>
       </View>
 
-    </View>
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 

@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 
 const PRIMARY_COLOR = '#B3717A';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -167,14 +168,15 @@ export default function UserProfileScreen() {
   );
 
   return (
-    <LinearGradient
-      colors={["#e0f2fe", "#fdf2f2"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.root}
-    >
-      <Stack.Screen options={{ headerShown: false }} />
-      {renderHeader()}
+    <EdgeToEdgeLayout backgroundColor="#e0f2fe" statusBarStyle="dark-content" statusBarBg="#e0f2fe">
+      <LinearGradient
+        colors={["#e0f2fe", "#fdf2f2"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.root}
+      >
+        <Stack.Screen options={{ headerShown: false }} />
+        {renderHeader()}
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
@@ -193,7 +195,8 @@ export default function UserProfileScreen() {
           contentContainerStyle={{ paddingBottom: 12 }}
         />
       </ScrollView>
-    </LinearGradient>
+      </LinearGradient>
+    </EdgeToEdgeLayout>
   );
 }
 

@@ -21,6 +21,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import { Ionicons } from '@expo/vector-icons';
 import {
     getDreamById,
@@ -357,9 +358,10 @@ export default function DreamDetailScreen() {
     );
 
     return (
-        <LinearGradient colors={['#F0F9FF', '#E0F2FE']} style={styles.root}>
-            {/* Sticky Header */}
-            <View style={[styles.navHeader, { paddingTop: insets.top + 6 }]}>
+        <EdgeToEdgeLayout backgroundColor="#F0F9FF" statusBarStyle="dark-content" statusBarBg="#F0F9FF">
+            <LinearGradient colors={['#F0F9FF', '#E0F2FE']} style={styles.root}>
+                {/* Sticky Header */}
+                <View style={[styles.navHeader, { paddingTop: 6 }]}>
                 <TouchableOpacity
                   onPress={() => router.back()}
                   style={styles.iconBtn}
@@ -516,7 +518,8 @@ export default function DreamDetailScreen() {
                   </View>
                 </Animated.View>
             </Animated.View>
-        </LinearGradient>
+            </LinearGradient>
+        </EdgeToEdgeLayout>
     );
 }
 

@@ -11,7 +11,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
-  StatusBar,
   Image,
   Pressable,
   StyleSheet,
@@ -25,6 +24,7 @@ import {
   Animated,
   ScrollView,
 } from 'react-native';
+import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -542,9 +542,9 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <View style={styles.header}>
+    <EdgeToEdgeLayout backgroundColor="#FFFFFF" statusBarStyle="dark-content" statusBarBg="#FFFFFF">
+      <View style={styles.container}>
+        <View style={styles.header}>
         <Text style={styles.logo}>Dream<Text style={styles.logoEm}>Link</Text></Text>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.hdrBtn}>
@@ -601,7 +601,8 @@ export default function HomeScreen() {
           }
         />
       )}
-    </View>
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 

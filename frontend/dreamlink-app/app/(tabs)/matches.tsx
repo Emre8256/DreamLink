@@ -6,7 +6,6 @@ import wsService from '../../services/websocket';
 import { useAppStore } from '../../store/useAppStore';
 import {
   ActivityIndicator,
-  StatusBar,
   Alert,
   FlatList,
   Image,
@@ -17,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 
 import {
   LikeResponse,
@@ -194,7 +193,6 @@ const EmptyState = ({ tab }: { tab: Tab }) => {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function MatchesScreen() {
-  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('likedMe');
   const [myLikes, setMyLikes] = useState<LikeResponse[]>([]);
   const [likedMe, setLikedMe] = useState<LikeResponse[]>([]);
@@ -245,9 +243,11 @@ export default function MatchesScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
+        <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </EdgeToEdgeLayout>
     );
   }
 
@@ -295,38 +295,39 @@ export default function MatchesScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <View style={{ paddingTop: insets.top, backgroundColor: COLORS.bg }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Connections</Text>
-        </View>
+    <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
+      <View style={styles.root}>
+        <View style={{ backgroundColor: COLORS.bg }}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Connections</Text>
+          </View>
 
-        {/* Segmented Control */}
-        <View style={styles.segmentedControlContainer}>
-          <View style={styles.segmentedControl}>
-            {tabs.map(tab => {
-              const isActive = activeTab === tab.id;
-              return (
-                <TouchableOpacity
-                  key={tab.id}
-                  style={[styles.segmentTab, isActive && styles.segmentTabActive]}
-                  onPress={() => setActiveTab(tab.id)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}>
-                    {tab.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          {/* Segmented Control */}
+          <View style={styles.segmentedControlContainer}>
+            <View style={styles.segmentedControl}>
+              {tabs.map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <TouchableOpacity
+                    key={tab.id}
+                    style={[styles.segmentTab, isActive && styles.segmentTabActive]}
+                    onPress={() => setActiveTab(tab.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </View>
-      </View>
 
-      {renderContent()}
-    </View>
+        {renderContent()}
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 

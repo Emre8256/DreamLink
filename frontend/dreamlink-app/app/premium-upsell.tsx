@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 import { getPremiumCtaCopy, PremiumCtaReason, logAnalyticsEvent } from '../services/api';
 
 const allowedReasons: PremiumCtaReason[] = ['likesYou', 'dailyPicks', 'likeLimit', 'rewind', 'boost'];
@@ -31,8 +32,9 @@ export default function PremiumUpsellScreen() {
   }, [reason]);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 20 }]}> 
-      <View style={styles.header}>
+    <EdgeToEdgeLayout backgroundColor="#F5F6FF" statusBarStyle="dark-content" statusBarBg="#F5F6FF">
+      <View style={[styles.root, { paddingTop: 12, paddingBottom: insets.bottom + 20 }]}>
+        <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} activeOpacity={0.8}>
           <Ionicons name="close" size={22} color="#5E5E72" />
         </TouchableOpacity>
@@ -82,7 +84,8 @@ export default function PremiumUpsellScreen() {
           <Text style={styles.secondaryText}>{copy.cancelLabel}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 

@@ -18,7 +18,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -26,6 +25,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 import { useAuth } from '../context/AuthContext';
 import {
   deleteDream,
@@ -783,9 +783,9 @@ export default function DreamArchiveScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
+    <EdgeToEdgeLayout backgroundColor={BG} statusBarStyle="dark-content" statusBarBg={BG}>
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── Animated Sticky Header ── */}
       <Animated.View
@@ -920,7 +920,8 @@ export default function DreamArchiveScreen() {
           setAdvVisible(false);
         }}
       />
-    </View>
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 

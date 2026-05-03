@@ -5,7 +5,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  StatusBar,
   Image,
   StyleSheet,
   Text,
@@ -23,6 +22,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import {
   getDiscoverFeed,
   getDailyPicks,
@@ -630,131 +630,134 @@ export default function DiscoverScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
+        <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </EdgeToEdgeLayout>
     );
   }
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
-      <View style={{ paddingTop: insets.top, backgroundColor: COLORS.bg }}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Discover</Text>
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={handleRewind} disabled={rewindStack.length === 0} style={[styles.headerIconBtn, { opacity: rewindStack.length === 0 ? 0.3 : 1 }]}>
-              <Undo2 size={24} color={COLORS.textMuted} strokeWidth={2.5} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={openFilter} style={styles.headerIconBtn} activeOpacity={0.8}>
-              <SlidersHorizontal size={24} color={COLORS.textMuted} strokeWidth={2.5} />
-            </TouchableOpacity>
+    <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
+      <View style={styles.root}>
+        <View style={{ backgroundColor: COLORS.bg }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Discover</Text>
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={handleRewind} disabled={rewindStack.length === 0} style={[styles.headerIconBtn, { opacity: rewindStack.length === 0 ? 0.3 : 1 }]}>
+                <Undo2 size={24} color={COLORS.textMuted} strokeWidth={2.5} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={openFilter} style={styles.headerIconBtn} activeOpacity={0.8}>
+                <SlidersHorizontal size={24} color={COLORS.textMuted} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.deckArea} onLayout={(e) => setDeckHeight(e.nativeEvent.layout.height)}>
-        {renderCards()}
-      </View>
+        <View style={styles.deckArea} onLayout={(e) => setDeckHeight(e.nativeEvent.layout.height)}>
+          {renderCards()}
+        </View>
 
-      {/* ── Filter Modal ── */}
-      <Modal visible={filterVisible} animationType="none" transparent onRequestClose={closeFilter}>
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(26,22,20,0.4)', opacity: filterSlideAnim.interpolate({ inputRange: [0, SCREEN_HEIGHT], outputRange: [1, 0], extrapolate: 'clamp' }) }]}>
-          <Pressable style={{ flex: 1 }} onPress={closeFilter} />
-        </Animated.View>
-
-        <Animated.View style={[styles.filterSheet, { paddingBottom: insets.bottom + 16, transform: [{ translateY: filterSlideAnim }] }]}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.filterTitle}>Filter</Text>
-
-          <Text style={styles.filterLabel}>Location</Text>
-          <View style={styles.pillRow}>
-            {LOCATION_OPTIONS.map(opt => (
-              <TouchableOpacity key={opt.value} style={[styles.pill, location === opt.value && styles.pillActive]} onPress={() => setLocation(opt.value)} activeOpacity={0.8}>
-                <Text style={[styles.pillText, location === opt.value && styles.pillTextActive]}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.filterLabel}>Age Range</Text>
-          <View style={styles.sliderRow}>
-            <Text style={styles.sliderValue}>{ageRange[0]}</Text>
-            <Slider style={{ flex: 1, marginHorizontal: 10 }} minimumValue={18} maximumValue={65} step={1} value={ageRange[0]} minimumTrackTintColor={COLORS.primary} maximumTrackTintColor="#e5e7eb" thumbTintColor={COLORS.primary} onValueChange={(v: number) => setAgeRange([v, Math.max(v, ageRange[1])])} />
-            <Text style={styles.sliderValue}>{ageRange[1]}</Text>
-            <Slider style={{ flex: 1, marginHorizontal: 10 }} minimumValue={18} maximumValue={65} step={1} value={ageRange[1]} minimumTrackTintColor={COLORS.primary} maximumTrackTintColor="#e5e7eb" thumbTintColor={COLORS.primary} onValueChange={(v: number) => setAgeRange([Math.min(v, ageRange[0]), v])} />
-          </View>
-
-          <Text style={styles.filterLabel}>Gender</Text>
-          <View style={styles.genderRow}>
-            {GENDERS.map(opt => (
-              <TouchableOpacity key={opt.value} style={[styles.genderBox, gender === opt.value && styles.genderBoxActive]} onPress={() => setGender(opt.value)} activeOpacity={0.8}>
-                <Ionicons name={opt.icon as any} size={20} color={gender === opt.value ? '#fff' : COLORS.primary} />
-                <Text style={[styles.genderText, gender === opt.value && { color: '#fff' }]}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TouchableOpacity style={styles.applyBtn} onPress={handleApplyFilters} activeOpacity={0.85}>
-            <Text style={styles.applyBtnText}>Apply</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </Modal>
-
-      {/* ── WHISPER DRAWER MODALI (Black & White Theme) ── */}
-      <Modal visible={whisperOpen} transparent animationType="none" onRequestClose={closeWhisper}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalRoot}>
-          <Pressable style={{ flex: 1 }} onPress={closeWhisper} />
-          
-          <Animated.View style={[ styles.whisperSheet, { paddingBottom: insets.bottom + 16, transform: [{ translateY: whisperSheetAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }] } ]}>
-            <View style={styles.sheetHeader}>
-              <View style={styles.whisperCountBadge}>
-                 <MessageCircle size={14} color="#1C1714" strokeWidth={3} />
-                 <Text style={styles.whisperCountTxt}>{whisperCount} Left</Text>
-              </View>
-              <TouchableOpacity onPress={closeWhisper} style={styles.closeBtn}><X size={20} color={COLORS.textMain} /></TouchableOpacity>
-            </View>
-
-            <View style={styles.pinnedContent}>
-              {whisperTarget?.type === 'photo' ? (
-                 <Image source={{ uri: whisperTarget.content }} style={styles.pinnedImg} />
-              ) : (
-                 <View style={styles.pinnedTextWrap}>
-                    {whisperTarget?.title && <Text style={styles.pinnedTitle}>{whisperTarget.title}</Text>}
-                    <Text style={styles.pinnedText} numberOfLines={3}>"{whisperTarget?.content}"</Text>
-                 </View>
-              )}
-            </View>
-
-            <View style={styles.inputWrapper}>
-              <TextInput 
-                style={styles.whisperInput}
-                autoFocus
-                multiline
-                maxLength={120}
-                placeholder="Whisper about this..."
-                placeholderTextColor={COLORS.textLight}
-                value={whisperText}
-                onChangeText={setWhisperText}
-              />
-              <View style={styles.inputFooter}>
-                <Text style={[styles.charCount, whisperText.length === 120 && { color: '#ef4444' }]}>
-                  {whisperText.length}/120
-                </Text>
-                <TouchableOpacity 
-                  style={[styles.sendBtn, !whisperText.trim() && styles.sendBtnDisabled]} 
-                  onPress={sendWhisper}
-                  disabled={!whisperText.trim()}
-                >
-                  <Text style={styles.sendBtnTxt}>Send</Text>
-                  <Send size={14} color="#FFF" />
-                </TouchableOpacity>
-              </View>
-            </View>
+        {/* ── Filter Modal ── */}
+        <Modal visible={filterVisible} animationType="none" transparent onRequestClose={closeFilter}>
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(26,22,20,0.4)', opacity: filterSlideAnim.interpolate({ inputRange: [0, SCREEN_HEIGHT], outputRange: [1, 0], extrapolate: 'clamp' }) }]}>
+            <Pressable style={{ flex: 1 }} onPress={closeFilter} />
           </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
 
-    </View>
+          <Animated.View style={[styles.filterSheet, { paddingBottom: insets.bottom + 16, transform: [{ translateY: filterSlideAnim }] }]}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.filterTitle}>Filter</Text>
+
+            <Text style={styles.filterLabel}>Location</Text>
+            <View style={styles.pillRow}>
+              {LOCATION_OPTIONS.map(opt => (
+                <TouchableOpacity key={opt.value} style={[styles.pill, location === opt.value && styles.pillActive]} onPress={() => setLocation(opt.value)} activeOpacity={0.8}>
+                  <Text style={[styles.pillText, location === opt.value && styles.pillTextActive]}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.filterLabel}>Age Range</Text>
+            <View style={styles.sliderRow}>
+              <Text style={styles.sliderValue}>{ageRange[0]}</Text>
+              <Slider style={{ flex: 1, marginHorizontal: 10 }} minimumValue={18} maximumValue={65} step={1} value={ageRange[0]} minimumTrackTintColor={COLORS.primary} maximumTrackTintColor="#e5e7eb" thumbTintColor={COLORS.primary} onValueChange={(v: number) => setAgeRange([v, Math.max(v, ageRange[1])])} />
+              <Text style={styles.sliderValue}>{ageRange[1]}</Text>
+              <Slider style={{ flex: 1, marginHorizontal: 10 }} minimumValue={18} maximumValue={65} step={1} value={ageRange[1]} minimumTrackTintColor={COLORS.primary} maximumTrackTintColor="#e5e7eb" thumbTintColor={COLORS.primary} onValueChange={(v: number) => setAgeRange([Math.min(v, ageRange[0]), v])} />
+            </View>
+
+            <Text style={styles.filterLabel}>Gender</Text>
+            <View style={styles.genderRow}>
+              {GENDERS.map(opt => (
+                <TouchableOpacity key={opt.value} style={[styles.genderBox, gender === opt.value && styles.genderBoxActive]} onPress={() => setGender(opt.value)} activeOpacity={0.8}>
+                  <Ionicons name={opt.icon as any} size={20} color={gender === opt.value ? '#fff' : COLORS.primary} />
+                  <Text style={[styles.genderText, gender === opt.value && { color: '#fff' }]}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity style={styles.applyBtn} onPress={handleApplyFilters} activeOpacity={0.85}>
+              <Text style={styles.applyBtnText}>Apply</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Modal>
+
+        {/* ── WHISPER DRAWER MODALI (Black & White Theme) ── */}
+        <Modal visible={whisperOpen} transparent animationType="none" onRequestClose={closeWhisper}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalRoot}>
+            <Pressable style={{ flex: 1 }} onPress={closeWhisper} />
+
+            <Animated.View style={[ styles.whisperSheet, { paddingBottom: insets.bottom + 16, transform: [{ translateY: whisperSheetAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }] } ]}>
+              <View style={styles.sheetHeader}>
+                <View style={styles.whisperCountBadge}>
+                   <MessageCircle size={14} color="#1C1714" strokeWidth={3} />
+                   <Text style={styles.whisperCountTxt}>{whisperCount} Left</Text>
+                </View>
+                <TouchableOpacity onPress={closeWhisper} style={styles.closeBtn}><X size={20} color={COLORS.textMain} /></TouchableOpacity>
+              </View>
+
+              <View style={styles.pinnedContent}>
+                {whisperTarget?.type === 'photo' ? (
+                   <Image source={{ uri: whisperTarget.content }} style={styles.pinnedImg} />
+                ) : (
+                   <View style={styles.pinnedTextWrap}>
+                      {whisperTarget?.title && <Text style={styles.pinnedTitle}>{whisperTarget.title}</Text>}
+                      <Text style={styles.pinnedText} numberOfLines={3}>"{whisperTarget?.content}"</Text>
+                   </View>
+                )}
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.whisperInput}
+                  autoFocus
+                  multiline
+                  maxLength={120}
+                  placeholder="Whisper about this..."
+                  placeholderTextColor={COLORS.textLight}
+                  value={whisperText}
+                  onChangeText={setWhisperText}
+                />
+                <View style={styles.inputFooter}>
+                  <Text style={[styles.charCount, whisperText.length === 120 && { color: '#ef4444' }]}>
+                    {whisperText.length}/120
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.sendBtn, !whisperText.trim() && styles.sendBtnDisabled]}
+                    onPress={sendWhisper}
+                    disabled={!whisperText.trim()}
+                  >
+                    <Text style={styles.sendBtnTxt}>Send</Text>
+                    <Send size={14} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Animated.View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 

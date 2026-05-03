@@ -3,10 +3,11 @@ import {
   Animated,
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
-  Image, Modal, Pressable, StatusBar
+  Image, Modal, Pressable
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { 
@@ -325,11 +326,11 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <View style={s.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+    <EdgeToEdgeLayout backgroundColor={C.bg} statusBarStyle="dark-content" statusBarBg={C.bg}>
+      <View style={s.screen}>
 
-      {/* ── HEADER ── */}
-      <View style={[s.header, { paddingTop: insets.top }]}>
+        {/* ── HEADER ── */}
+        <View style={[s.header]}>
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn}>
           <Ionicons name="arrow-back" size={26} color={C.textMain} />
         </TouchableOpacity>
@@ -840,7 +841,8 @@ export default function EditProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-    </View>
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 

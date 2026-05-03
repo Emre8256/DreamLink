@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { register as apiRegister, login as apiLogin, AuthRequest } from '../services/api';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 
 const { width, height } = Dimensions.get('window');
 
@@ -96,27 +97,28 @@ export default function RegisterScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            {/* Background Layer */}
-            <View style={StyleSheet.absoluteFill}>
-                <Image 
-                    source={{ uri: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop' }}
-                    style={styles.backgroundImage}
-                    resizeMode="cover"
-                />
-                <LinearGradient
-                    colors={['rgba(10, 7, 5, 0.7)', 'rgba(10, 7, 5, 0.98)']}
-                    style={StyleSheet.absoluteFill}
-                />
-            </View>
+        <EdgeToEdgeLayout backgroundColor="#0a0705" statusBarStyle="light-content" statusBarBg="#0a0705">
+            <View style={styles.container}>
+                {/* Background Layer */}
+                <View style={StyleSheet.absoluteFill}>
+                    <Image
+                        source={{ uri: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop' }}
+                        style={styles.backgroundImage}
+                        resizeMode="cover"
+                    />
+                    <LinearGradient
+                        colors={['rgba(10, 7, 5, 0.7)', 'rgba(10, 7, 5, 0.98)']}
+                        style={StyleSheet.absoluteFill}
+                    />
+                </View>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
 
-            <ScrollView 
-               contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top, paddingBottom: Platform.OS === 'ios' ? insets.bottom : 24 }}
-               keyboardShouldPersistTaps="handled"
-               showsVerticalScrollIndicator={false}
-            >
+                <ScrollView
+                   contentContainerStyle={{ flexGrow: 1, paddingBottom: Platform.OS === 'ios' ? insets.bottom : 24 }}
+                   keyboardShouldPersistTaps="handled"
+                   showsVerticalScrollIndicator={false}
+                >
                 {/* Top Bar */}
                 <View style={styles.topBar}>
                     <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
@@ -298,9 +300,10 @@ export default function RegisterScreen() {
                     </Text>
                 </View>
 
-            </ScrollView>
-            </KeyboardAvoidingView>
-        </View>
+                </ScrollView>
+                </KeyboardAvoidingView>
+            </View>
+        </EdgeToEdgeLayout>
     );
 }
 

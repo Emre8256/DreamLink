@@ -10,7 +10,6 @@ import {
   FlatList,
   Image,
   RefreshControl,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -19,7 +18,7 @@ import {
   View,
   Alert,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import { getMyConversations, deleteConversation, ConversationResponse, formatRelativeTime } from '../../services/api';
 
 // ─── Constants & Tokens ────────────────────────────────────────────────────────
@@ -189,7 +188,6 @@ const EmptyState = () => (
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ChatScreen() {
-  const insets = useSafeAreaInsets();
   const [conversations, setConversations] = useState<ConversationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -279,67 +277,70 @@ export default function ChatScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.root, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
+        <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </EdgeToEdgeLayout>
     );
   }
 
   return (
-    <View style={[styles.root]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
+      <View style={[styles.root]}>
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-        <Text style={styles.headerTitle}>Chats</Text>
-        {selectedId ? (
-          <TouchableOpacity onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
-        ) : <View />}
-      </View>
-
-      {/* Editoryal Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchGlass}>
-          <Ionicons name="search" size={18} color={COLORS.textLight} style={{ marginLeft: 16 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search connections..."
-            placeholderTextColor={COLORS.textLight}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+        {/* Header */}
+        <View style={[styles.header]}>
+          <Text style={styles.headerTitle}>Chats</Text>
+          {selectedId ? (
+            <TouchableOpacity onPress={handleDelete}>
+              <Ionicons name="trash-outline" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+          ) : <View />}
         </View>
-      </View>
 
-      <FlatList
-        data={conversations}
-        keyExtractor={i => i.id}
-        renderItem={({ item, index }) => (
-          <ChatCard
-            item={item}
-            index={index}
-            isSelected={selectedId === item.id}
-            onSelect={handleSelect}
-            onPress={() => handlePressCard(item)}
-            unreadCount={index === 0 ? 3 : index === 1 ? 1 : 0}
-          />
-        )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListHeaderComponent={<NewConnections />}
-        ListEmptyComponent={<EmptyState />}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); load(); }}
-            tintColor={COLORS.primary}
-          />
-        }
-      />
-    </View>
+        {/* Editoryal Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchGlass}>
+            <Ionicons name="search" size={18} color={COLORS.textLight} style={{ marginLeft: 16 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search connections..."
+              placeholderTextColor={COLORS.textLight}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </View>
+
+        <FlatList
+          data={conversations}
+          keyExtractor={i => i.id}
+          renderItem={({ item, index }) => (
+            <ChatCard
+              item={item}
+              index={index}
+              isSelected={selectedId === item.id}
+              onSelect={handleSelect}
+              onPress={() => handlePressCard(item)}
+              unreadCount={index === 0 ? 3 : index === 1 ? 1 : 0}
+            />
+          )}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ListHeaderComponent={<NewConnections />}
+          ListEmptyComponent={<EmptyState />}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); load(); }}
+              tintColor={COLORS.primary}
+            />
+          }
+        />
+      </View>
+    </EdgeToEdgeLayout>
   );
 }
 
