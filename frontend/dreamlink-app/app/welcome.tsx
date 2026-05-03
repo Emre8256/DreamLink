@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
+import { AnimatedPressable } from '../components/AnimatedPressable';
 
 const { width, height } = Dimensions.get('window');
 
@@ -114,13 +115,13 @@ export default function WelcomeScreen() {
                     </View>
 
                     <View style={styles.actionSection}>
-                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8} onPress={() => router.push('/register')}>
+                        <AnimatedPressable style={styles.primaryButton} hapticType="light" onPress={() => router.push('/register')}>
                             <Text style={styles.primaryButtonText}>CREATE AN ACCOUNT</Text>
-                        </TouchableOpacity>
+                        </AnimatedPressable>
 
-                        <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.6} onPress={() => router.push('/login')}>
+                        <AnimatedPressable style={styles.secondaryButton} hapticType="light" onPress={() => router.push('/login')}>
                             <Text style={styles.secondaryButtonText}>I have an account</Text>
-                        </TouchableOpacity>
+                        </AnimatedPressable>
                     </View>
 
                     <View style={styles.legalSection}>

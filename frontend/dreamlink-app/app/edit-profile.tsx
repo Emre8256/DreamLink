@@ -10,9 +10,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { 
-  User, Calendar, Ruler, Home, MapPin, GraduationCap, 
-  Moon, Cigarette, Wine 
+import { AnimatedPressable } from '../components/AnimatedPressable';
+import {
+  User, Calendar, Ruler, Home, MapPin, GraduationCap,
+  Moon, Cigarette, Wine
 } from 'lucide-react-native';
 
 // ─── Design Tokens (Bumble & Premium Soft UI) ───────────────
@@ -610,9 +611,9 @@ export default function EditProfileScreen() {
 
           {/* Save */}
           <View style={[s.fixedBottomBar, { paddingBottom: insets.bottom + 20 }]}>
-            <TouchableOpacity style={s.saveBtnBig} onPress={saveHeightSelection}>
+            <AnimatedPressable style={s.saveBtnBig} onPress={saveHeightSelection} hapticType="medium">
               <Text style={s.saveBtnBigText}>Save</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
 
         </View>
@@ -667,9 +668,9 @@ export default function EditProfileScreen() {
             </View>
           </ScrollView>
           <View style={[s.fixedBottomBar, { paddingBottom: insets.bottom + 20 }]}>
-             <TouchableOpacity style={s.saveBtnBig} onPress={saveTextEdit}>
+             <AnimatedPressable style={s.saveBtnBig} onPress={saveTextEdit} hapticType="medium">
                <Text style={s.saveBtnBigText}>Save</Text>
-             </TouchableOpacity>
+             </AnimatedPressable>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -700,9 +701,9 @@ export default function EditProfileScreen() {
             ))}
           </ScrollView>
           <View style={[s.fixedBottomBar, { paddingBottom: insets.bottom + 20 }]}>
-             <TouchableOpacity style={s.saveBtnBig} onPress={saveInterests}>
+             <AnimatedPressable style={s.saveBtnBig} onPress={saveInterests} hapticType="medium">
                <Text style={s.saveBtnBigText}>Save Selections</Text>
-             </TouchableOpacity>
+             </AnimatedPressable>
           </View>
         </View>
       </Modal>

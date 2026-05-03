@@ -24,6 +24,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import { PageContent } from '../../components/PageContent';
+import { AnimatedPressable } from '../../components/AnimatedPressable';
 import {
   getMyProfile,
   getUserDreams,
@@ -304,13 +305,13 @@ export default function ProfileScreen() {
             ))}
           </View>
           <View style={{ alignItems: 'center', gap: 16, marginBottom: 50 }}>
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={handleLogout}
-              activeOpacity={0.8}
+              hapticType="light"
               style={{ width: '88%', backgroundColor: '#fff5f5', paddingVertical: 14, borderRadius: 13, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' }}
             >
               <Text style={{ color: '#ef4444', fontWeight: '700', fontSize: 14, fontFamily: QS_BOLD }}>Sign Out</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
             <Text style={{ color: C.textLight, fontSize: 10, fontWeight: '500' }}>DreamLink v1.2.4</Text>
           </View>
         </>
@@ -396,11 +397,11 @@ const renderPlans = () => (
     
     <View style={styles.premiumCTA}>
       <Animated.View style={[styles.upgradeBtnPulse, { transform: [{ scale: upgradePulseAnim }] }]}>
-        <TouchableOpacity style={styles.upgradeBtn} activeOpacity={0.88}>
+        <AnimatedPressable style={styles.upgradeBtn} hapticType="medium">
           <LinearGradient colors={['#1a1a1a', '#333333']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.upgradeGradient}>
             <Text style={styles.upgradeBtnText}>UPGRADE TO PREMIUM</Text>
           </LinearGradient>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </Animated.View>
       <Text style={styles.ctaSubtext}>Cancel anytime • 7-day free trial</Text>
     </View>
@@ -466,14 +467,14 @@ const renderJournal = () => (
       </View>
     )}
 
-    <TouchableOpacity 
-      style={styles.archiveBtn} 
-      activeOpacity={0.7} 
+    <AnimatedPressable
+      style={styles.archiveBtn}
+      hapticType="light"
       onPress={() => router.push('/dream-archive')}
     >
       <Text style={styles.archiveBtnText}>View All Entries</Text>
       <Ionicons name="arrow-forward" size={14} color="#000000" />
-    </TouchableOpacity>
+    </AnimatedPressable>
   </View>
 );
 
@@ -624,18 +625,18 @@ const renderAura = () => (
               { label: 'WHISPER',   value: 2,  Icon: MessageCircle, color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)'   },
               { label: 'REWIND',    value: 5,  Icon: Undo2,     color: '#3B82F6', bg: 'rgba(59,130,246,0.1)'   },
             ] as const).map(({ label, value, Icon, color, bg }) => (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={label}
                 style={[styles.tokenBox, { width: STAT_CARD_WIDTH }]}
                 onPress={() => router.push('/premium-upsell')}
-                activeOpacity={0.75}
+                hapticType="light"
               >
                 <View style={[styles.tokenIconWrap, { backgroundColor: bg }]}>
                   <Icon size={20} color={color} strokeWidth={2.5} />
                 </View>
                 <Text style={styles.tokenValue}>{value}</Text>
                 <Text style={styles.tokenLabel}>{label}</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             ))}
           </View>
         </View>

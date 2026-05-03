@@ -10,6 +10,7 @@ import { login as apiLogin } from '../services/api';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
+import { AnimatedPressable } from '../components/AnimatedPressable';
 
 const { width, height } = Dimensions.get('window');
 
@@ -144,18 +145,18 @@ export default function LoginScreen() {
                     {error && <Text style={styles.errorText}>{error}</Text>}
 
                     {/* Login Button */}
-                    <TouchableOpacity
+                    <AnimatedPressable
                         style={[styles.loginButton, loading && styles.loginButtonDisabled]}
                         onPress={handleLogin}
                         disabled={loading}
-                        activeOpacity={0.8}
+                        hapticType="light"
                     >
                         {loading ? (
                             <ActivityIndicator color="#FFFFFF" />
                         ) : (
                             <Text style={styles.loginButtonText}>Log In</Text>
                         )}
-                    </TouchableOpacity>
+                    </AnimatedPressable>
                 </View>
 
                 {/* Spacer to push footer to bottom */}

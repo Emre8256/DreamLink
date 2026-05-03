@@ -17,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
+import { AnimatedPressable } from '../../components/AnimatedPressable';
 
 import {
   LikeResponse,
@@ -146,9 +147,9 @@ const MutualCard = ({ item }: { item: MutualMatchResponse }) => (
         </Text>
         <Text style={styles.matchTime}>{formatRelativeTime(item.matchedAt)}</Text>
 
-        <TouchableOpacity
+        <AnimatedPressable
           style={styles.matchChatButton}
-          activeOpacity={0.85}
+          hapticType="heavy"
           onPress={() => {
             if (item.conversationId) {
               router.push({
@@ -166,7 +167,7 @@ const MutualCard = ({ item }: { item: MutualMatchResponse }) => (
         >
           <Ionicons name="chatbubble" size={18} color="#fff" style={{ marginRight: 8 }} />
           <Text style={styles.matchChatButtonText}>Start Chat</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     </View>
   </View>

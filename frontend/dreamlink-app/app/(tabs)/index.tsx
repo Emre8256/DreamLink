@@ -26,6 +26,7 @@ import {
 } from 'react-native';
 import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import { LinearGradient } from 'expo-linear-gradient';
+import { AnimatedPressable } from '../../components/AnimatedPressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createDream,
@@ -250,11 +251,11 @@ const CreatorCard = ({ onDreamShared }: { onDreamShared: (d: DreamResponse) => v
           </Text>
           <Ionicons name={themeOpen ? 'chevron-up' : 'chevron-down'} size={10} color={C.tm} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.postBtn} onPress={handleShare} disabled={sharing}>
+        <AnimatedPressable style={styles.postBtn} onPress={handleShare} disabled={sharing} hapticType="medium">
           {sharing ? <ActivityIndicator size="small" color="white" /> : (
             <><Ionicons name="send" size={13} color="white" /><Text style={styles.postBtnText}>Share</Text></>
           )}
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       {themeOpen && (

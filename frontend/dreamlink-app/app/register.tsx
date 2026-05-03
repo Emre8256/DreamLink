@@ -10,6 +10,7 @@ import { register as apiRegister, login as apiLogin, AuthRequest } from '../serv
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
+import { AnimatedPressable } from '../components/AnimatedPressable';
 
 const { width, height } = Dimensions.get('window');
 
@@ -265,18 +266,18 @@ export default function RegisterScreen() {
                     </TouchableOpacity>
 
                     {/* Register Button */}
-                    <TouchableOpacity
+                    <AnimatedPressable
                         style={[styles.registerButton, loading && styles.registerButtonDisabled]}
                         onPress={handleRegister}
                         disabled={loading}
-                        activeOpacity={0.8}
+                        hapticType="light"
                     >
                         {loading ? (
                             <ActivityIndicator color="#FFFFFF" />
                         ) : (
                             <Text style={styles.registerButtonText}>Continue</Text>
                         )}
-                    </TouchableOpacity>
+                    </AnimatedPressable>
 
                     {/* Login Link */}
                     <View style={styles.footerContainer}>

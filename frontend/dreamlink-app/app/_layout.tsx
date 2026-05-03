@@ -113,6 +113,9 @@ function RootLayoutNav() {
           <Stack
             screenOptions={{
               contentStyle: { backgroundColor: '#FFFFFF' },
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+              fullScreenGestureEnabled: true,
             }}
             screenListeners={{
               focus: () => {
@@ -123,13 +126,13 @@ function RootLayoutNav() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
             <Stack.Screen name="chatbox" options={{ headerShown: false }} />
-            <Stack.Screen name="welcome" options={{ headerShown: false }} />
+            <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="register" options={{ headerShown: false }} />
             <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
             <Stack.Screen name="notifications" options={{ headerShown: false }} />
             <Stack.Screen name="dream/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="premium-upsell" options={{ headerShown: false, presentation: 'modal' }} />
+            <Stack.Screen name="premium-upsell" options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }} />
           </Stack>
         </View>
       </ThemeProvider>

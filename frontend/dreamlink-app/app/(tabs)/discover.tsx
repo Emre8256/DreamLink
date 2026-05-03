@@ -23,6 +23,7 @@ import { useAuth } from '../../context/AuthContext';
 import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
+import { lightHaptic, mediumHaptic, heavyHaptic } from '../../components/useHaptics';
 import {
   getDiscoverFeed,
   getDailyPicks,
@@ -422,6 +423,7 @@ export default function DiscoverScreen() {
 
   const position = useRef(new Animated.ValueXY()).current;
   const isAnimating = useRef(false);
+  const hasTriggeredHapticRef = useRef(false);
 
   useEffect(() => { deckRef.current = deck; }, [deck]);
 
@@ -481,6 +483,11 @@ export default function DiscoverScreen() {
   const triggerSwipe = useCallback((direction: 'right' | 'left', duration = SWIPE_OUT_DURATION) => {
     if (isAnimating.current || deckRef.current.length === 0) return;
     isAnimating.current = true;
+    if (direction === 'right') {
+      heavyHaptic();
+    } else {
+      lightHaptic();
+    }
     const x = direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
     Animated.timing(position, { toValue: { x, y: 0 }, duration, useNativeDriver: false }).start(() => onSwipeComplete(direction));
   }, [onSwipeComplete]);
@@ -490,9 +497,19 @@ export default function DiscoverScreen() {
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > Math.abs(g.dy) * 2.5 && Math.abs(g.dx) > 10,
       onPanResponderMove: (_, g) => {
-        if (!isAnimating.current) position.setValue({ x: g.dx, y: 0 });
+        if (!isAnimating.current) {
+          position.setValue({ x: g.dx, y: 0 });
+          const absX = Math.abs(g.dx);
+          if (absX >= SWIPE_THRESHOLD * 0.8 && !hasTriggeredHapticRef.current) {
+            hasTriggeredHapticRef.current = true;
+            mediumHaptic();
+          } else if (absX < SWIPE_THRESHOLD * 0.6) {
+            hasTriggeredHapticRef.current = false;
+          }
+        }
       },
       onPanResponderRelease: (_, g) => {
+        hasTriggeredHapticRef.current = false;
         if (isAnimating.current) return;
         if (g.dx > SWIPE_THRESHOLD) triggerSwipe('right');
         else if (g.dx < -SWIPE_THRESHOLD) triggerSwipe('left');
