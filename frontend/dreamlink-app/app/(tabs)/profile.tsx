@@ -721,6 +721,7 @@ const styles = StyleSheet.create({
 
   pillTabBar: { flexDirection: 'row', marginHorizontal: 22, marginBottom: 24, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
   pillTab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, position: 'relative' },
+  pillTabActive: {},
   pillTabText: { fontFamily: QS_BOLD, fontSize: 16, fontWeight: '600', color: C.textLight, letterSpacing: 0.2 },
   pillTabTextActive: { color: C.primary, fontWeight: '800' },
   activeIndicator: { position: 'absolute', bottom: -1, width: '45%', height: 3, backgroundColor: C.primary, borderRadius: 20, shadowColor: C.primary, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
