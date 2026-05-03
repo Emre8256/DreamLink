@@ -27,6 +27,13 @@ import {
 import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AnimatedPressable } from '../../components/AnimatedPressable';
+import { SkeletonBlock } from '../../components/SkeletonBlock';
+import ReanimatedAnimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createDream,
@@ -477,6 +484,29 @@ const CommunityDreamCard = React.memo(({ dream }: { dream: DreamResponse }) => {
   );
 });
 
+// ─ Skeleton Loader ───────────────────────────────────────────────
+const JournalCardSkeleton = () => (
+  <View style={{ height: 168, borderRadius: 24, flexDirection: 'row',
+                 marginBottom: 16, backgroundColor: '#EDE5E7', overflow: 'hidden' }}>
+    <SkeletonBlock width={105} height={168} borderRadius={0} />
+    <View style={{ flex: 1, padding: 12, justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <SkeletonBlock width={100} height={12} borderRadius={4} />
+        <SkeletonBlock width={60} height={12} borderRadius={4} />
+      </View>
+      <View style={{ height: 1, backgroundColor: '#EDE5E7' }} />
+      <SkeletonBlock width={150} height={15} borderRadius={4} />
+      <SkeletonBlock width={160} height={12} borderRadius={4} />
+      <SkeletonBlock width={130} height={12} borderRadius={4} />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <SkeletonBlock width={48} height={20} borderRadius={6} />
+        <SkeletonBlock width={48} height={20} borderRadius={6} />
+        <SkeletonBlock width={48} height={20} borderRadius={6} />
+      </View>
+    </View>
+  </View>
+);
+
 // ─ Main Screen ───────────────────────────────────────────────────
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -489,6 +519,10 @@ export default function HomeScreen() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [communityFilter, setCommunityFilter] = useState<'trending' | 'new' | 'match'>('trending');
   const setUnreadDreams = useAppStore(state => state.setUnreadDreams);
+
+  const contentOpacity = useSharedValue(0);
+  const skeletonOpacity = useSharedValue(1);
+  const [showSkeleton, setShowSkeleton] = useState(true);
 
   useFocusEffect(useCallback(() => {
     checkMyLatestDream();
@@ -530,7 +564,14 @@ export default function HomeScreen() {
   const loadDreams = async () => {
     try { const res = await getPublicDreams(0, 20); setDreams(res.content); }
     catch { showAlert('Error', 'Dreams could not be loaded.'); }
-    finally { setLoading(false); setRefreshing(false); }
+    finally {
+      setLoading(false);
+      setRefreshing(false);
+      contentOpacity.value = withTiming(1, { duration: 350 });
+      skeletonOpacity.value = withTiming(0, { duration: 350 }, (finished) => {
+        if (finished) runOnJS(setShowSkeleton)(false);
+      });
+    }
   };
 
   const handleRefresh = () => { setRefreshing(true); loadDreams(); checkMyLatestDream(); };
@@ -541,6 +582,14 @@ export default function HomeScreen() {
       setDreams(prev => prev.some(d => d.id === newDream.id) ? prev : [newDream, ...prev]);
     }
   };
+
+  const contentAnimStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+  }));
+
+  const skeletonAnimStyle = useAnimatedStyle(() => ({
+    opacity: skeletonOpacity.value,
+  }));
 
   return (
     <EdgeToEdgeLayout backgroundColor="#FFFFFF" statusBarStyle="dark-content" statusBarBg="#FFFFFF">
@@ -579,28 +628,38 @@ export default function HomeScreen() {
           {myLatestDream ? <TodaysInsightCard dream={myLatestDream} /> : <EmptyTodayCard />}
           <ArchiveBridge />
         </ScrollView>
-      ) : loading ? (
-        <View style={styles.center}><ActivityIndicator size="large" color={C.rose} /></View>
       ) : (
-        <FlatList
-          data={dreams}
-          renderItem={({ item }) => <CommunityDreamCard dream={item} />}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.communityContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.rose} colors={[C.rose]} />}
-          ListHeaderComponent={
-            <View style={styles.feedHeader}>
-              <Text style={styles.feedTitle}>Most liked this week</Text>
-            </View>
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="moon-outline" size={48} color={C.tm} />
-              <Text style={styles.emptyText}>No dreams shared yet.</Text>
-            </View>
-          }
-        />
+        <View style={{ flex: 1, position: 'relative' }}>
+          <ReanimatedAnimated.View style={[{ flex: 1 }, contentAnimStyle]}>
+            <FlatList
+              data={dreams}
+              renderItem={({ item }) => <CommunityDreamCard dream={item} />}
+              keyExtractor={item => item.id}
+              contentContainerStyle={styles.communityContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.rose} colors={[C.rose]} />}
+              ListHeaderComponent={
+                <View style={styles.feedHeader}>
+                  <Text style={styles.feedTitle}>Most liked this week</Text>
+                </View>
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="moon-outline" size={48} color={C.tm} />
+                  <Text style={styles.emptyText}>No dreams shared yet.</Text>
+                </View>
+              }
+            />
+          </ReanimatedAnimated.View>
+          {showSkeleton && (
+            <ReanimatedAnimated.View style={[StyleSheet.absoluteFill, { padding: 20 }, skeletonAnimStyle]}>
+              <JournalCardSkeleton />
+              <JournalCardSkeleton />
+              <JournalCardSkeleton />
+              <JournalCardSkeleton />
+            </ReanimatedAnimated.View>
+          )}
+        </View>
       )}
       </View>
     </EdgeToEdgeLayout>

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import wsService from '../../services/websocket';
 import { useAppStore } from '../../store/useAppStore';
 import {
@@ -18,6 +18,13 @@ import {
 } from 'react-native';
 import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import { AnimatedPressable } from '../../components/AnimatedPressable';
+import { SkeletonBlock } from '../../components/SkeletonBlock';
+import ReanimatedAnimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
 
 import {
   LikeResponse,
@@ -192,6 +199,21 @@ const EmptyState = ({ tab }: { tab: Tab }) => {
   );
 };
 
+// ─── Skeleton Loader ──────────────────────────────────────────────────────────
+const LikeCardSkeleton = () => (
+  <View style={{ height: 120, borderRadius: 20, flexDirection: 'row',
+                 marginBottom: 16, backgroundColor: '#EDE5E7', overflow: 'hidden' }}>
+    <SkeletonBlock width={95} height={120} borderRadius={0} />
+    <View style={{ flex: 1, padding: 16, justifyContent: 'space-between' }}>
+      <SkeletonBlock width={80} height={10} borderRadius={4} />
+      <SkeletonBlock width={140} height={18} borderRadius={4} />
+      <SkeletonBlock width={160} height={12} borderRadius={4} />
+      <SkeletonBlock width={120} height={12} borderRadius={4} />
+      <SkeletonBlock width={60} height={10} borderRadius={4} />
+    </View>
+  </View>
+);
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function MatchesScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('likedMe');
@@ -202,17 +224,27 @@ export default function MatchesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const contentOpacity = useSharedValue(0);
+  const skeletonOpacity = useSharedValue(1);
+  const [showSkeleton, setShowSkeleton] = useState(true);
+  const hasLoadedOnce = useRef(false);
+
   const loadAll = useCallback(() => {
-    setLoading(true);
+    if (!hasLoadedOnce.current) setLoading(true);
     setTimeout(() => {
       setMyLikes(MOCK_MY_LIKES);
       setLikedMe(MOCK_LIKED_ME);
       setMutual(MOCK_MUTUAL);
       setLikedMeLocked(true);
+      hasLoadedOnce.current = true;
       setLoading(false);
       setRefreshing(false);
+      contentOpacity.value = withTiming(1, { duration: 350 });
+      skeletonOpacity.value = withTiming(0, { duration: 350 }, (finished) => {
+        if (finished) runOnJS(setShowSkeleton)(false);
+      });
     }, 600);
-  }, []);
+  }, [contentOpacity, skeletonOpacity]);
 
   const setUnreadMatches = useAppStore(state => state.setUnreadMatches);
 
@@ -220,7 +252,9 @@ export default function MatchesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadAll();
+      if (hasLoadedOnce.current) {
+        loadAll();
+      }
       setUnreadMatches(false);
     }, [loadAll, setUnreadMatches])
   );
@@ -242,15 +276,13 @@ export default function MatchesScreen() {
     { id: 'mutual', label: 'Matches' },
   ];
 
-  if (loading) {
-    return (
-      <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
-        <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      </EdgeToEdgeLayout>
-    );
-  }
+  const contentAnimStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+  }));
+
+  const skeletonAnimStyle = useAnimatedStyle(() => ({
+    opacity: skeletonOpacity.value,
+  }));
 
   const renderContent = () => {
     const refreshCtrl = <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadAll(); }} tintColor={COLORS.primary} />;
@@ -273,25 +305,37 @@ export default function MatchesScreen() {
     }
 
     return (
-      <FlatList
-        data={dataToRender}
-        keyExtractor={i => i.likeId || i.userId}
-        renderItem={({ item }) => {
-          if (activeTab === 'mutual') return <MutualCard item={item} />;
-          return (
-            <LikeCard
-              item={item}
-              tab={activeTab}
-              isLocked={likedMeLocked}
-            />
-          );
-        }}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={<EmptyState tab={activeTab} />}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={refreshCtrl}
-      />
+      <View style={{ flex: 1, position: 'relative' }}>
+        <ReanimatedAnimated.View style={[{ flex: 1 }, contentAnimStyle]}>
+          <FlatList
+            data={dataToRender}
+            keyExtractor={i => i.likeId || i.userId}
+            renderItem={({ item }) => {
+              if (activeTab === 'mutual') return <MutualCard item={item} />;
+              return (
+                <LikeCard
+                  item={item}
+                  tab={activeTab}
+                  isLocked={likedMeLocked}
+                />
+              );
+            }}
+            ListHeaderComponent={listHeader}
+            ListEmptyComponent={<EmptyState tab={activeTab} />}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={refreshCtrl}
+          />
+        </ReanimatedAnimated.View>
+        {showSkeleton && (
+          <ReanimatedAnimated.View style={[StyleSheet.absoluteFill, { padding: 24 }, skeletonAnimStyle]}>
+            <LikeCardSkeleton />
+            <LikeCardSkeleton />
+            <LikeCardSkeleton />
+            <LikeCardSkeleton />
+          </ReanimatedAnimated.View>
+        )}
+      </View>
     );
   };
 

@@ -24,6 +24,13 @@ import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import { lightHaptic, mediumHaptic, heavyHaptic } from '../../components/useHaptics';
+import { SkeletonBlock } from '../../components/SkeletonBlock';
+import ReanimatedAnimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
 import {
   getDiscoverFeed,
   getDailyPicks,
@@ -362,6 +369,21 @@ const DeckCardBody = ({ item, onLike, onNope, onSuperLike, cardHeight, openWhisp
   );
 };
 
+// ─── Skeleton Loader ─────────────────────────────────────────────────────────
+const HERO_HEIGHT = (CARD_WIDTH * 4) / 3;
+
+const DiscoverCardSkeleton = () => (
+  <View style={[styles.cardWrapper, { backgroundColor: '#EDE5E7' }]}>
+    <SkeletonBlock width={CARD_WIDTH} height={HERO_HEIGHT} borderRadius={0} />
+    <View style={{ padding: 20, gap: 12 }}>
+      <SkeletonBlock width={CARD_WIDTH * 0.55} height={22} borderRadius={6} />
+      <SkeletonBlock width={CARD_WIDTH * 0.38} height={16} borderRadius={6} />
+      <SkeletonBlock width={CARD_WIDTH * 0.88} height={14} borderRadius={6} />
+      <SkeletonBlock width={CARD_WIDTH * 0.68} height={14} borderRadius={6} />
+    </View>
+  </View>
+);
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
@@ -421,6 +443,10 @@ export default function DiscoverScreen() {
   const [rewindStack, setRewindStack] = useState<DiscoverCardResponse[]>([]);
   const [deckHeight, setDeckHeight] = useState(0);
 
+  const contentOpacity = useSharedValue(0);
+  const skeletonOpacity = useSharedValue(1);
+  const [showSkeleton, setShowSkeleton] = useState(true);
+
   const position = useRef(new Animated.ValueXY()).current;
   const isAnimating = useRef(false);
   const hasTriggeredHapticRef = useRef(false);
@@ -449,6 +475,10 @@ export default function DiscoverScreen() {
       console.error('Discover load error:', e);
     } finally {
       setLoading(false);
+      contentOpacity.value = withTiming(1, { duration: 350 });
+      skeletonOpacity.value = withTiming(0, { duration: 350 }, (finished) => {
+        if (finished) runOnJS(setShowSkeleton)(false);
+      });
     }
   }, []);
 
@@ -645,15 +675,13 @@ export default function DiscoverScreen() {
     }).reverse();
   };
 
-  if (loading) {
-    return (
-      <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
-        <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      </EdgeToEdgeLayout>
-    );
-  }
+  const contentAnimStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+  }));
+
+  const skeletonAnimStyle = useAnimatedStyle(() => ({
+    opacity: skeletonOpacity.value,
+  }));
 
   return (
     <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
@@ -673,7 +701,14 @@ export default function DiscoverScreen() {
         </View>
 
         <View style={styles.deckArea} onLayout={(e) => setDeckHeight(e.nativeEvent.layout.height)}>
-          {renderCards()}
+          <ReanimatedAnimated.View style={[{ flex: 1, width: '100%' }, contentAnimStyle]}>
+            {renderCards()}
+          </ReanimatedAnimated.View>
+          {showSkeleton && (
+            <ReanimatedAnimated.View style={[StyleSheet.absoluteFill, { alignItems: 'center' }, skeletonAnimStyle]}>
+              <DiscoverCardSkeleton />
+            </ReanimatedAnimated.View>
+          )}
         </View>
 
         {/* ── Filter Modal ── */}
