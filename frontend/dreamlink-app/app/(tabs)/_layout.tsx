@@ -36,7 +36,6 @@ export default function TabLayout() {
           fontFamily: 'Quicksand_700Bold',
           fontSize: 11,
           letterSpacing: 0.3,
-          paddingBottom: 4,
         },
         tabBarItemStyle: {
           flex: 1,
@@ -44,13 +43,20 @@ export default function TabLayout() {
           alignItems: 'center',
         },
         tabBarStyle: {
+          position: 'absolute',
+          bottom: Math.max(insets.bottom + 8, 8),
+          marginHorizontal: 30,
           backgroundColor: '#ffffff',
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom,
-          paddingTop: 6,
+          borderRadius: 30,
+          height: 64,
           borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
+          borderWidth: 1,
+          borderColor: 'rgba(226, 232, 240, 0.8)',
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
         },
       }}>
       <Tabs.Screen
@@ -66,16 +72,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="matches"
-        options={{
-          headerShown: false,
-          tabBarLabel: 'Matches',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon Icon={Sparkles} color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="likes"
         options={{
           headerShown: false,
@@ -85,6 +81,16 @@ export default function TabLayout() {
           ),
           tabBarBadge: hasUnreadMatches ? '' : undefined,
           tabBarBadgeStyle: { backgroundColor: badgeColor, minWidth: 8, height: 8, borderRadius: 4, top: 4, right: 10 },
+        }}
+      />
+      <Tabs.Screen
+        name="matches"
+        options={{
+          headerShown: false,
+          tabBarLabel: 'Matches',
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon Icon={Sparkles} color={color} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
