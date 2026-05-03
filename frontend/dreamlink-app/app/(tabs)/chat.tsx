@@ -181,7 +181,7 @@ const EmptyState = () => (
     </LinearGradient>
     <Text style={styles.emptyTitle}>No messages yet</Text>
     <Text style={styles.emptySub}>
-      Like new dreams in Discover, your chats will appear here when you match.
+      Like new dreams in Matches, your chats will appear here when you match.
     </Text>
   </View>
 );
