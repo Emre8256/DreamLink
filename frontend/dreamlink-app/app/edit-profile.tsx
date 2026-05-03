@@ -40,7 +40,15 @@ const CHRONOTYPE_OPTIONS = [
 ];
 const SMOKING_OPTIONS = ['Non-Smoker', 'Sometimes', 'Smoker', 'Trying to Quit', 'Prefer Not to Say'];
 const ALCOHOL_OPTIONS = ['Non-Drinker', 'Social Drinker', 'Regular Drinker', 'Prefer Not to Say'];
-const AVAILABLE_LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Russian', 'Arabic', 'Italian', 'Japanese', 'Korean', 'Turkish'];
+const AVAILABLE_LANGUAGES = [
+  'English', 'Spanish', 'French', 'German', 'Russian', 'Arabic', 'Italian', 'Japanese', 'Korean', 'Turkish',
+  'Portuguese', 'Hindi', 'Bengali', 'Chinese (Mandarin)', 'Chinese (Cantonese)', 'Dutch', 'Swedish', 'Polish',
+  'Thai', 'Vietnamese', 'Indonesian', 'Greek', 'Hebrew', 'Czech', 'Romanian', 'Hungarian', 'Ukrainian',
+  'Persian (Farsi)', 'Urdu', 'Punjabi', 'Tamil', 'Telugu', 'Malay', 'Filipino (Tagalog)', 'Swahili',
+  'Norwegian', 'Danish', 'Finnish', ' Icelandic', 'Catalan', 'Basque', 'Galician', 'Welsh', 'Irish',
+  'Scottish Gaelic', 'Latin', 'Esperanto', 'Sign Language', 'Bulgarian', 'Serbian', 'Croatian', 'Bosnian',
+  'Slovak', 'Slovenian', 'Lithuanian', 'Latvian', 'Estonian', 'Georgian', 'Armenian', 'Azerbaijani'
+];
 
 const PROMPT_QUESTIONS = [
   "The one dream I'd like to live again...",
@@ -54,10 +62,18 @@ const PROMPT_QUESTIONS = [
 ];
 
 const RICH_INTERESTS = [
-  { category: 'Dreams & Psychology', items: ['Lucid Dreaming 🌙', 'Astral Projection ✨', 'Sleep Analysis 💤', 'Mythology 🏛️', 'Symbolism 👁️', 'Psychology 🧠', 'Tarot 🎴', 'Astrology ⭐', 'Subconscious 🌌'] },
-  { category: 'Art & Design', items: ['Digital Art 🎨', '3D Animation 🎬', 'Photography 📸', 'Ceramics & Sculpture 🏺', 'Oil Painting 🖌️', 'Graphic Design 🎭', 'Fashion Design 👗', 'Architecture 🏛️'] },
-  { category: 'Music & Sound', items: ['Independent Music 🎵', 'Classical Music 🎼', 'Electronic Music 🎧', 'Jazz & Blues 🎺', 'Alternative Rock 🎸', 'Podcast Listening 🎙️', 'Playing Instruments 🎹'] },
-  { category: 'Life & Wellness', items: ['Meditation & Yoga 🧘', 'Night Walks 🌙', 'Nature Hiking 🥾', 'Mindfulness 🌿', 'Nutrition & Diet 🥗', 'Spa & Relaxation 🛀', 'Therapy 💆'] }
+  { category: 'Dreams & Psychology', items: ['Lucid Dreaming 🌙', 'Astral Projection ✨', 'Sleep Analysis 💤', 'Mythology 🏛️', 'Symbolism 👁️', 'Psychology 🧠', 'Tarot 🎴', 'Astrology ⭐', 'Subconscious 🌌', 'Dream Journaling 📓', 'Jungian Psychology ⚖️', 'Numerology 🔢', 'Palm Reading ✋', 'Past Life Regression 🔄'] },
+  { category: 'Art & Design', items: ['Digital Art 🎨', '3D Animation 🎬', 'Photography 📸', 'Ceramics & Sculpture 🏺', 'Oil Painting 🖌️', 'Graphic Design 🎭', 'Fashion Design 👗', 'Architecture 🏛️', 'Street Art graffiti 🎪', 'Calligraphy ✒️', 'Interior Design 🛋️', 'UX/UI Design 💻', 'Body Art & Tattoos 💉', 'Makeup Art 💄'] },
+  { category: 'Music & Sound', items: ['Independent Music 🎵', 'Classical Music 🎼', 'Electronic Music 🎧', 'Jazz & Blues 🎺', 'Alternative Rock 🎸', 'Podcast Listening 🎙️', 'Playing Instruments 🎹', 'Hip-Hop & Rap 🎤', 'Ambient & Atmospheric 🎚️', 'Singer-Songwriter 🎻', 'World Music 🌍', 'Music Production 🎚️', 'K-Pop/Bollywood 💿', 'Vinyl Collecting 💿'] },
+  { category: 'Life & Wellness', items: ['Meditation & Yoga 🧘', 'Night Walks 🌙', 'Nature Hiking 🥾', 'Mindfulness 🌿', 'Nutrition & Diet 🥗', 'Spa & Relaxation 🛀', 'Therapy 💆', 'Breathwork 🌬️', 'Sound Healing 🔔', 'Acupuncture 💉', 'Aromatherapy 🌸', 'Cold Therapy 🧊', 'Forest Bathing 🌲', 'Crystal Healing 💎'] },
+  { category: 'Technology & Gaming', items: ['PC Gaming 🎮', 'Console Gaming 🎯', 'Retro Gaming 👾', 'VR/AR Experiences 🥽', 'Coding & Programming 💻', 'AI & Machine Learning 🤖', 'Cybersecurity 🔐', 'Tech News & Gadgets 📱', 'Streaming Content 📺', 'Board Games 🎲', 'Card Games 🃏', 'Esports 🏆', 'Tech DIY 🛠️', 'Home Automation 🏠'] },
+  { category: 'Sports & Fitness', items: ['Weight Training 🏋️', 'Running & Marathon 🏃', 'Cycling 🚴', 'Swimming 🏊', 'Rock Climbing 🧗', 'Martial Arts 🥋', 'Team Sports ⚽', 'Yoga Flow 🧘‍♀️', 'Pilates 🤸', 'CrossFit 🔥', 'Dance & Choreography 💃', 'Sports Watching 📊', 'Outdoor Sports ⛰️', 'Winter Sports 🎿'] },
+  { category: 'Travel & Adventure', items: ['Backpacking 🎒', 'Solo Travel 🌍', 'Road Trips 🚗', 'Adventure Sports 🪂', 'Luxury Travel ✈️', 'Cultural Immersion 🏺', 'Eco-Tourism 🌱', 'Cruises 🚢', 'Mountain Expeditions 🏔️', 'Safari & Wildlife 🦁', 'City Exploration 🏙️', 'Beach & Island Life 🏝️', 'Digital Nomad Life 💻🌴', 'Culinary Tours 🍜'] },
+  { category: 'Food & Cooking', items: ['Home Cooking 🍳', 'Baking & Pastry 🍰', 'Molecular Gastronomy 🧪', 'Food Photography 📸', 'Wine & Sommelier 🍷', 'Coffee Culture ☕', 'Tea Ceremonies 🍵', 'Street Food 🥡', 'Fine Dining 🍽️', 'Plant-Based Cooking 🥬', 'BBQ & Grilling 🍖', 'International Cuisines 🥘', 'Fermentation 🥒', 'Food Blogging 📱'] },
+  { category: 'Books & Literature', items: ['Fiction & Novels 📚', 'Science Fiction 🚀', 'Fantasy & Magic 🐉', 'Mystery & Thriller 🔍', 'Non-Fiction & Essays 📖', 'Poetry & Haiku ✍️', 'Graphic Novels 📕', 'Self-Development 📈', 'Philosophy ⚖️', 'Biography & Memoir 🗓️', 'History & Archaeology 🏺', 'Business & Finance 💰', 'Comics & Manga 📕', 'Audiobooks 🎧'] },
+  { category: 'Science & Space', items: ['Astronomy & Stargazing 🔭', 'Physics & Quantum ⚛️', 'Biology & Genetics 🧬', 'Neuroscience 🧠', 'Chemistry Experiments 🧪', 'Space Exploration 🚀', 'Paleontology & Dinosaurs 🦕', 'Environmental Science 🌳', 'Mathematics & Puzzles 🔢', 'Robotics & DIY 🤖', 'Weather & Meteorology 🌤️', 'Oceanography 🌊', 'Medical Science 🏥', 'Crypto & Blockchain 🔗'] },
+  { category: 'Nature & Animals', items: ['Birdwatching 🐦', 'Wildlife Photography 📸', 'Gardening & Plants 🌱', 'Marine Life 🤿', 'Pet Care 🐾', 'Sustainability 🌿', 'Organic Farming 🚜', 'Conservation 🌳', 'Insect Study 🐞', 'Astronomy Nightsky 🌌', 'Geology & Rocks 🪨', 'Forest Exploration 🌲', 'Zoo & Aquariums 🐠', 'Beekeeping 🐝'] },
+  { category: 'Social & Lifestyle', items: ['Networking & Events 🤝', 'Volunteering & Charity 💝', 'Community Building 🏘️', 'Photography Walks 📷', 'Cooking for Friends 🍽️', 'Game Nights 🎲', 'Movie Marathons 🎬', 'Wine Tastings 🍷', 'Craft Fairs 🎨', 'Spiritual Retreats 🕉️', 'Personal Growth 🌱', 'Life Hacking 💡', 'Minimalism 📦', 'Home Brewing 🍺'] }
 ];
 
 // ─── Height Data ───
@@ -130,6 +146,7 @@ export default function EditProfileScreen() {
   const [interests, setInterests] = useState<string[]>(['Lucid Dreaming 🌙', 'Independent Cinema 🎬']);
   const [draftInterests, setDraftInterests] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>(['English', 'Spanish']);
+  const [languageSearch, setLanguageSearch] = useState('');
 
   // Prompts
   const [prompts, setPrompts] = useState<{question: string, answer: string}[]>([
@@ -689,28 +706,45 @@ export default function EditProfileScreen() {
         </View>
       </Modal>
 
-      {/* ── LANGUAGES MODAL ── */}
-      <Modal visible={languageModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setLanguageModalVisible(false)}>
-        <View style={[s.modalRoot, { paddingTop: Platform.OS === 'ios' ? 20 : insets.top }]}>
-          <View style={s.modalHeader}>
-            <TouchableOpacity onPress={() => setLanguageModalVisible(false)}><Text style={s.modalActionText}>Close</Text></TouchableOpacity>
-            <Text style={s.modalTitle}>Languages I Speak</Text>
-            <View style={{width: 50}} />
-          </View>
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-             <View style={s.pillsWrap}>
-                {AVAILABLE_LANGUAGES.map(item => {
-                  const isSelected = languages.includes(item);
-                  return (
-                    <TouchableOpacity key={item} onPress={() => toggleLanguage(item)} style={isSelected ? s.pillModalActive : s.pillModalIdle}>
-                      <Text style={isSelected ? s.pillModalActiveText : s.pillModalIdleText}>{item}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-             </View>
-          </ScrollView>
-        </View>
-      </Modal>
+{/* ── LANGUAGES MODAL ── */}
+<Modal visible={languageModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setLanguageModalVisible(false); setLanguageSearch(''); }}>
+  <View style={[s.modalRoot, { paddingTop: Platform.OS === 'ios' ? 20 : insets.top }]}>
+    <View style={s.modalHeader}>
+      <TouchableOpacity onPress={() => { setLanguageModalVisible(false); setLanguageSearch(''); }}><Text style={s.modalActionText}>Close</Text></TouchableOpacity>
+      <Text style={s.modalTitle}>Languages I Speak</Text>
+      <View style={{width: 50}} />
+    </View>
+    <View style={s.searchInputContainer}>
+      <Ionicons name="search" size={18} color={C.textLight} />
+      <TextInput
+        style={s.searchInput}
+        placeholder="Search languages..."
+        placeholderTextColor={C.textLight}
+        value={languageSearch}
+        onChangeText={setLanguageSearch}
+      />
+      {languageSearch.length > 0 && (
+        <TouchableOpacity onPress={() => setLanguageSearch('')}>
+          <Ionicons name="close-circle" size={18} color={C.textLight} />
+        </TouchableOpacity>
+      )}
+    </View>
+    <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+      <View style={s.pillsWrap}>
+        {AVAILABLE_LANGUAGES
+          .filter(lang => lang.toLowerCase().includes(languageSearch.toLowerCase()))
+          .map(item => {
+          const isSelected = languages.includes(item);
+          return (
+            <TouchableOpacity key={item} onPress={() => toggleLanguage(item)} style={isSelected ? s.pillModalActive : s.pillModalIdle}>
+              <Text style={isSelected ? s.pillModalActiveText : s.pillModalIdleText}>{item}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </ScrollView>
+  </View>
+</Modal>
 
       {/* ── PROMPT (MANAGE QUESTIONS) ── */}
       <Modal visible={promptManagerVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPromptManagerVisible(false)}>
@@ -928,6 +962,10 @@ const s = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingBottom: 18, backgroundColor: C.bg, borderBottomWidth: 1, borderColor: C.borderLight },
   modalActionText: { fontFamily: QS_BOLD, fontSize: 16, color: '#111111', fontWeight: '600' },
   modalTitle: { fontFamily: QS_BOLD, fontSize: 17, fontWeight: '800', color: '#000000' },
+
+  // Search Input
+  searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.bg, marginHorizontal: 20, marginTop: 12, marginBottom: 8, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 14, gap: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  searchInput: { flex: 1, fontFamily: QS_MEDIUM, fontSize: 15, color: '#000000', padding: 0 },
   
   // Modal Interests
   interestCatTitle: { fontFamily: QS_BOLD, fontSize: 13, fontWeight: '800', color: '#111111', marginBottom: 13, textTransform: 'uppercase', letterSpacing: 1 },

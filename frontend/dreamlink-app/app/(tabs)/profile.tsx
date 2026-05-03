@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Star, MessageCircle, Undo2 } from 'lucide-react-native';
+import { Zap, Star, MessageCircle, Undo2, Moon } from 'lucide-react-native';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -33,7 +33,7 @@ import {
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const QS_BOLD = 'Quicksand_700Bold';
-const QS_MEDIUM = 'Quicksand_500Medium'; 
+const QS_MEDIUM = 'Quicksand_500Medium';
 const SERIF = Platform.OS === 'ios' ? 'Baskerville' : 'serif';
 
 const C = {
@@ -60,13 +60,12 @@ const FONT_SIZES = {
 };
 
 const SCREEN_W = Dimensions.get('window').width;
-const STAT_CARD_WIDTH = (SCREEN_W - 48 - 24) / 4; // 24px padding*2, 8px gap*3
+const STAT_CARD_WIDTH = (SCREEN_W - 48 - 24) / 4; 
 
 const SAMPLE_PHOTO = 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80';
 
 type TabKey = 'plans' | 'journal' | 'aura';
 
-// ─── Settings Config ──────────────────────────────────────────────────────────
 const SETTINGS_CATEGORIES = [
   { key: 'account', label: 'Account', icon: 'person-outline' },
   { key: 'subscriptions', label: 'Subscriptions', icon: 'star-outline' },
@@ -77,7 +76,6 @@ const SETTINGS_CATEGORIES = [
 ] as const;
 type SettingsCategoryKey = (typeof SETTINGS_CATEGORIES)[number]['key'] | null;
 
-// ─── SettingsRow ──────────────────────────────────────────────────────────────
 const SettingsRow = ({
   iconName, label, type, value, onPress, onToggle, iconColor, danger, divider,
 }: {
@@ -110,7 +108,6 @@ const SR = StyleSheet.create({
   dangerLabel: { color: '#D14343', fontWeight: '600' },
 });
 
-// ─── SectionCard ──────────────────────────────────────────────────────────────
 const SectionCard = ({ title, children }: { title?: string; children: React.ReactNode }) => (
   <View style={{ backgroundColor: '#FFF', borderRadius: 14, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(148,163,184,0.18)', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3, overflow: 'hidden' }}>
     {title && <Text style={{ fontSize: 10, fontWeight: '700', color: '#94a3b8', paddingTop: 14, paddingBottom: 3, paddingHorizontal: 16, letterSpacing: 1.3, textTransform: 'uppercase' }}>{title}</Text>}
@@ -118,7 +115,6 @@ const SectionCard = ({ title, children }: { title?: string; children: React.Reac
   </View>
 );
 
-// ─── Mock Dream Data ──────────────────────────────────────────────────────────
 const MOCK_DREAMS = [
   { id: '1', createdAt: new Date().toISOString(), title: 'The Floating Island', description: 'A vast island suspended above silver clouds, drifting toward a silent horizon.', theme: 'LUCID' },
   { id: '2', createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), title: 'Midnight Forest', description: 'Enormous stone blocks gliding between dark ancient trees under a moonless sky.', theme: 'CURIOUS' },
@@ -139,11 +135,9 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('plans');
 
-  // Settings modal state
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [currentSubPage, setCurrentSubPage] = useState<SettingsCategoryKey>(null);
 
-  // Notification toggles
   const [notifMatch, setNotifMatch] = useState(true);
   const [notifLike, setNotifLike] = useState(true);
   const [notifPostLike, setNotifPostLike] = useState(true);
@@ -152,7 +146,6 @@ export default function ProfileScreen() {
   const [notifComment, setNotifComment] = useState(true);
   const [notifStreak, setNotifStreak] = useState(true);
 
-  // Privacy toggles
   const [privRegion, setPrivRegion] = useState(true);
   const [privAge, setPrivAge] = useState(true);
   const [privOnline, setPrivOnline] = useState(true);
@@ -161,7 +154,6 @@ export default function ProfileScreen() {
   const [privStreak, setPrivStreak] = useState(true);
   const [privAds, setPrivAds] = useState(true);
 
-  // Delete account state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showFinalDeleteModal, setShowFinalDeleteModal] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -370,57 +362,85 @@ export default function ProfileScreen() {
     </View>
   );
 
-  // ─── Tab: Dream Journal ───────────────────────────────────────────────────
+  // ─── YENİ NESİL JOURNAL MİMARİSİ (Staircase / Zigzag) ───
+  const DreamNode = ({ dream, index }: { dream: any; index: number }) => {
+    // Çift indexler solda (0, 2, 4), Tekler sağda (1, 3, 5)
+    const isLeft = index % 2 === 0;
+    const dateObj = new Date(dream.createdAt);
+    const dateStr = `${dateObj.getDate()} ${MONTH_NAMES[dateObj.getMonth()]}`;
+
+    const cardContent = (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push(`/dream/${dream.id}`)}
+        style={styles.zgCard}
+      >
+        <Text style={[styles.zgDate, { textAlign: isLeft ? 'right' : 'left' }]}>{dateStr}</Text>
+        <Text style={[styles.zgTitle, { textAlign: isLeft ? 'right' : 'left' }]} numberOfLines={2}>
+          {dream.title}
+        </Text>
+        <View style={[styles.zgThemeBadge, { alignSelf: isLeft ? 'flex-end' : 'flex-start' }]}>
+          <Text style={styles.zgThemeText}>{dream.theme || 'DREAM'}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+
+    return (
+      <View style={styles.zgRow}>
+        {/* Sol Kolon */}
+        <View style={styles.zgColSide}>
+          {isLeft && cardContent}
+        </View>
+
+        {/* Merkez Noktası (Timeline Omurgası Üzerindeki Top) */}
+        <View style={styles.zgColCenter}>
+          <View style={styles.zgDotOuter}>
+            <View style={styles.zgDotInner} />
+          </View>
+        </View>
+
+        {/* Sağ Kolon */}
+        <View style={styles.zgColSide}>
+          {!isLeft && cardContent}
+        </View>
+      </View>
+    );
+  };
+
   const renderJournal = () => (
     <View style={styles.tabContent}>
-      <View style={styles.timelineContainer}>
-        {dreamsToRender.map((d: any, index: number) => {
-          const dateObj = new Date(d.createdAt);
-          const day = dateObj.getDate();
-          const mon = MONTH_NAMES[dateObj.getMonth()];
-          const yr = dateObj.getFullYear();
-          const isLast = index === dreamsToRender.length - 1;
-          return (
-            <TouchableOpacity
-              key={d.id}
-              activeOpacity={0.75}
-              onPress={() => router.push(`/dream/${d.id}`)}
-              style={styles.timelineItem}
-            >
-              {/* Date column */}
-              <View style={styles.tlDateCol}>
-                <Text style={styles.tlDay}>{day}</Text>
-                <Text style={styles.tlMon}>{mon}</Text>
-                <Text style={styles.tlYr}>{yr}</Text>
-              </View>
-
-              {/* Spine */}
-              <View style={styles.tlSpineCol}>
-                <View style={styles.tlDot} />
-                {!isLast && <View style={styles.tlLine} />}
-              </View>
-
-              {/* Card */}
-              <View style={styles.tlCard}>
-                <Text style={styles.tlTitle}>{d.title}</Text>
-                <Text style={styles.tlDesc} numberOfLines={2}>{d.description}</Text>
-                <View style={styles.tlFooter}>
-                  <Text style={styles.tlTheme}>{d.theme || 'DREAM'}</Text>
-                  <Ionicons name="chevron-forward" size={13} color={C.roseMd} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+      {/* Header */}
+      <View style={styles.journalHeader}>
+        <View style={styles.journalHeaderLeft}>
+          <Text style={styles.journalHeaderTitle}>Your Dreams</Text>
+          <Text style={styles.journalHeaderSub}>{dreamsToRender.length} entries recorded</Text>
+        </View>
+        <View style={styles.journalMoonIcon}>
+          <Moon size={28} color="#A63F4F" strokeWidth={2} />
+        </View>
       </View>
 
-      <TouchableOpacity
-        style={styles.archiveBtn}
-        activeOpacity={0.7}
-        onPress={() => router.push('/dream-archive')}
-      >
-        <Text style={styles.archiveBtnText}>View All Archive</Text>
-        <Ionicons name="arrow-forward" size={14} color={C.primary} style={{ marginLeft: 6 }} />
+      {/* Merdiven Yapılı Timeline */}
+      {dreamsToRender.length > 0 ? (
+        <View style={styles.zgContainer}>
+          {/* Ortadan Geçecek Kesintisiz Çizgi */}
+          <View style={styles.zgCenterLine} />
+          
+          {dreamsToRender.map((d: any, index: number) => (
+            <DreamNode key={d.id} dream={d} index={index} />
+          ))}
+        </View>
+      ) : (
+        <View style={styles.emptyJournal}>
+          <Text style={styles.emptyJournalIcon}>💭</Text>
+          <Text style={styles.emptyJournalTitle}>No dreams recorded yet</Text>
+          <Text style={styles.emptyJournalSub}>Start journaling your dreams to see them here</Text>
+        </View>
+      )}
+
+      <TouchableOpacity style={styles.archiveBtn} activeOpacity={0.7} onPress={() => router.push('/dream-archive')}>
+        <Ionicons name="albums-outline" size={16} color={C.primary} />
+        <Text style={styles.archiveBtnText}>View Dream Archive</Text>
       </TouchableOpacity>
     </View>
   );
@@ -428,7 +448,6 @@ export default function ProfileScreen() {
   // ─── Tab: Aura Analysis ───────────────────────────────────────────────────
   const renderAura = () => (
     <View style={styles.tabContent}>
-      {/* Archetype card */}
       <View style={styles.auraArchetypeCard}>
         <View style={styles.auraArchetypeAccent} />
         <View style={{ flex: 1, paddingLeft: 16 }}>
@@ -439,7 +458,6 @@ export default function ProfileScreen() {
         <Text style={{ fontSize: 32, marginRight: 18 }}>🌙</Text>
       </View>
 
-      {/* Stats row */}
       <View style={styles.auraStatsRow}>
         {[
           { icon: 'moon-outline', label: 'DREAMS/MO', value: '7' },
@@ -454,7 +472,6 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      {/* Dominant themes */}
       <View style={styles.auraThemesCard}>
         <Text style={styles.auraSmallLabel}>DOMINANT THEMES</Text>
         {[
@@ -473,7 +490,6 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      {/* Locked section */}
       <View style={styles.auraLockedWrapper}>
         <View style={styles.auraGhostContent} pointerEvents="none">
           <Text style={[styles.auraSmallLabel, { marginBottom: 10 }]}>SUBCONSCIOUS SYMBOLS</Text>
@@ -501,27 +517,14 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <LinearGradient
-          colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.88)', 'rgba(255,255,255,1)']}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
+        <LinearGradient colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.88)', 'rgba(255,255,255,1)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
         <View style={styles.auraLockCard}>
           <Ionicons name="lock-closed-outline" size={22} color={C.primary} style={{ marginBottom: 10 }} />
           <Text style={styles.auraLockTitle}>Full Analysis is Premium</Text>
           <Text style={styles.auraLockSub}>Unlock word clouds, emotional rhythm{'\n'}& complete archetype breakdown</Text>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push('/premium-upsell')}
-            style={styles.auraLockBtn}
-          >
-            <LinearGradient
-              colors={C.upgrade_vibrant}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.auraLockBtnGradient}
-            >
+          <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/premium-upsell')} style={styles.auraLockBtn}>
+            <LinearGradient colors={C.upgrade_vibrant} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.auraLockBtnGradient}>
               <Text style={styles.auraLockBtnText}>Unlock with Premium</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -534,7 +537,7 @@ export default function ProfileScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
-      {/* ─── Header ─── */}
+      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity style={styles.settingsIcon} onPress={() => { setCurrentSubPage(null); setShowSettingsModal(true); }} activeOpacity={0.6}>
@@ -544,14 +547,10 @@ export default function ProfileScreen() {
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: insets.bottom + 8 }} showsVerticalScrollIndicator={false}>
 
-        {/* ─── 1. Avatar + Identity ─── */}
+        {/* Avatar + Identity */}
         <View style={styles.identitySection}>
           <View style={styles.identityRow}>
-            <TouchableOpacity
-              style={styles.avatarProgressWrapper}
-              activeOpacity={0.85}
-              onPress={() => router.push('/profile-preview')}
-            >
+            <TouchableOpacity style={styles.avatarProgressWrapper} activeOpacity={0.85} onPress={() => router.push('/profile-preview')}>
               <View style={styles.ringOuter}>
                 <View style={styles.ringInner}>
                   <Image source={{ uri: profile?.avatarUrl || SAMPLE_PHOTO }} style={styles.avatarBubbleImage} />
@@ -570,7 +569,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* ─── 2. Token Counters ─── */}
+        {/* Token Counters */}
         <View style={styles.tokenSectionWrapper}>
           <View style={styles.tokenSection}>
             {([
@@ -595,7 +594,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* ─── 3. Pill Tab Menu ─── */}
+        {/* Pill Tab Menu */}
         <View style={styles.pillTabBar}>
           {([
             { key: 'plans', label: 'Plans' },
@@ -610,15 +609,14 @@ export default function ProfileScreen() {
                 onPress={() => setActiveTab(tab.key)}
                 style={[styles.pillTab, active && styles.pillTabActive]}
               >
-                <Text style={[styles.pillTabText, active && styles.pillTabTextActive]}>
-                  {tab.label}
-                </Text>
+                <Text style={[styles.pillTabText, active && styles.pillTabTextActive]}>{tab.label}</Text>
+                {active && <View style={styles.activeIndicator} />}
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* ─── 4. Tab Content ─── */}
+        {/* Tab Content */}
         <View style={styles.section}>
           {activeTab === 'plans' && renderPlans()}
           {activeTab === 'journal' && renderJournal()}
@@ -627,15 +625,8 @@ export default function ProfileScreen() {
 
       </ScrollView>
 
-      {/* ─── Settings Modal ─── */}
-      <Modal
-        visible={showSettingsModal}
-        animationType="slide"
-        transparent={false}
-        presentationStyle="fullScreen"
-        onRequestClose={handleSettingsBack}
-        onShow={() => StatusBar.setBarStyle('dark-content', true)}
-      >
+      {/* Settings Modal */}
+      <Modal visible={showSettingsModal} animationType="slide" transparent={false} presentationStyle="fullScreen" onRequestClose={handleSettingsBack} onShow={() => StatusBar.setBarStyle('dark-content', true)}>
         <View style={{ flex: 1, backgroundColor: '#FFF' }}>
           <View style={{ paddingTop: insets.top, paddingHorizontal: 22, paddingBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 0.5, borderBottomColor: C.borderLight, backgroundColor: '#FFF' }}>
             <TouchableOpacity style={{ width: 36, alignItems: 'flex-start', justifyContent: 'center' }} onPress={handleSettingsBack} activeOpacity={0.7}>
@@ -650,43 +641,28 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* ─── Delete Step 1 ─── */}
+      {/* Delete Modals */}
       <Modal transparent visible={showDeleteModal} animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
         <View style={MD.backdrop}>
           <View style={MD.card}>
             <Text style={MD.title}>Delete account?</Text>
             <Text style={MD.txt}>This action cannot be undone. All your profile data, dreams and related info will be permanently deleted.</Text>
             <View style={MD.actions}>
-              <TouchableOpacity style={MD.cancel} onPress={() => setShowDeleteModal(false)}>
-                <Text style={MD.cancelTxt}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={MD.danger} onPress={() => { setShowDeleteModal(false); setShowFinalDeleteModal(true); }}>
-                <Text style={MD.dangerTxt}>Continue</Text>
-              </TouchableOpacity>
+              <TouchableOpacity style={MD.cancel} onPress={() => setShowDeleteModal(false)}><Text style={MD.cancelTxt}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={MD.danger} onPress={() => { setShowDeleteModal(false); setShowFinalDeleteModal(true); }}><Text style={MD.dangerTxt}>Continue</Text></TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* ─── Delete Step 2 ─── */}
       <Modal transparent visible={showFinalDeleteModal} animationType="fade" onRequestClose={() => setShowFinalDeleteModal(false)}>
         <View style={MD.backdrop}>
           <View style={MD.card}>
             <Text style={MD.title}>Final Confirmation</Text>
             <Text style={MD.txt}>Type DELETE below to confirm.</Text>
-            <TextInput
-              style={MD.input}
-              autoCapitalize="characters"
-              value={confirmText}
-              onChangeText={setConfirmText}
-              editable={!deleting}
-              placeholder="DELETE"
-              placeholderTextColor="#A3A8C2"
-            />
+            <TextInput style={MD.input} autoCapitalize="characters" value={confirmText} onChangeText={setConfirmText} editable={!deleting} placeholder="DELETE" placeholderTextColor="#A3A8C2" />
             <View style={MD.actions}>
-              <TouchableOpacity style={MD.cancel} onPress={() => { setShowFinalDeleteModal(false); setConfirmText(''); }} disabled={deleting}>
-                <Text style={MD.cancelTxt}>Cancel</Text>
-              </TouchableOpacity>
+              <TouchableOpacity style={MD.cancel} onPress={() => { setShowFinalDeleteModal(false); setConfirmText(''); }} disabled={deleting}><Text style={MD.cancelTxt}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity style={MD.danger} onPress={handleDeleteAccount} disabled={deleting}>
                 {deleting ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={MD.dangerTxt}>Delete Permanently</Text>}
               </TouchableOpacity>
@@ -723,7 +699,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end', justifyContent: 'center',
   },
 
-  // Identity
   identitySection: { paddingHorizontal: 24, marginTop: 23, marginBottom: 20 },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   avatarProgressWrapper: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
@@ -737,74 +712,24 @@ const styles = StyleSheet.create({
   completeBtn: { backgroundColor: C.primary, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, alignSelf: 'flex-start', shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
   completeBtnText: { fontFamily: QS_BOLD, fontSize: 12, color: '#FFFFFF', fontWeight: '700', letterSpacing: 0.3 },
 
-  // Token counters
   tokenSectionWrapper: { paddingHorizontal: 24, marginBottom: 24 },
   tokenSection: { flexDirection: 'row', gap: 8 },
   tokenBox: { backgroundColor: C.bg, borderRadius: 16, paddingVertical: 14, paddingTop: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.borderLight, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   tokenIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  tokenBoxPremium: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(166,63,79,0.15)', shadowColor: C.primary, shadowOpacity: 0.05, shadowRadius: 10 },
   tokenLabel: { fontFamily: QS_BOLD, fontSize: 9, color: C.textLight, fontWeight: '800', letterSpacing: 0.8, marginTop: 2 },
   tokenValue: { fontFamily: QS_BOLD, fontSize: 18, color: C.textMain, fontWeight: '800' },
 
-  // Pill Tab Bar
-  pillTabBar: {
-    flexDirection: 'row',
-    marginHorizontal: 22,
-    marginBottom: 28,
-    backgroundColor: 'transparent',
-    borderRadius: 50,
-    padding: 0,
-    borderWidth: 0,
-  },
-  pillTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    marginHorizontal: 4,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  pillTabActive: {
-    backgroundColor: 'transparent',
-    borderBottomColor: C.primary,
-    shadowColor: 'transparent',
-  },
-  pillTabText: {
-    fontFamily: QS_BOLD,
-    fontSize: 14,
-    color: C.textMuted,
-    letterSpacing: 0.3,
-    lineHeight: 20,
-  },
-  pillTabTextActive: {
-    fontFamily: QS_BOLD,
-    fontSize: 14,
-    color: C.primary,
-    letterSpacing: 0.3,
-    lineHeight: 20,
-  },
+  pillTabBar: { flexDirection: 'row', marginHorizontal: 22, marginBottom: 24, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+  pillTab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, position: 'relative' },
+  pillTabText: { fontFamily: QS_BOLD, fontSize: 16, fontWeight: '600', color: C.textLight, letterSpacing: 0.2 },
+  pillTabTextActive: { color: C.primary, fontWeight: '800' },
+  activeIndicator: { position: 'absolute', bottom: -1, width: '45%', height: 3, backgroundColor: C.primary, borderRadius: 20, shadowColor: C.primary, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
 
-  // Section wrapper
-  section: { paddingHorizontal: 22, marginBottom: 42 },
+  section: { paddingHorizontal: 22, marginBottom: 10 },
   tabContent: {},
 
   // ─── Plans Tab ───
-  premiumTable: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingTop: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 16,
-    elevation: 3,
-  },
+  premiumTable: { backgroundColor: '#FFFFFF', borderRadius: 20, paddingTop: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 3 },
   tableRowHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: C.borderLight, paddingVertical: 14 },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: 'rgba(228,228,231,0.5)', paddingVertical: 15 },
   tableHeaderText: { fontFamily: QS_BOLD, fontSize: FONT_SIZES.small_label - 1, fontWeight: '800', color: C.textLight, letterSpacing: 1.2 },
@@ -817,201 +742,86 @@ const styles = StyleSheet.create({
   upgradeGradient: { paddingVertical: 14, paddingHorizontal: 40, alignItems: 'center', justifyContent: 'center' },
   upgradeBtnText: { fontFamily: QS_BOLD, fontSize: FONT_SIZES.button_small, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1 },
 
-  // ─── Journal Tab (Premium & Soft UI) ───
-  timelineContainer: { paddingLeft: 4, paddingTop: 8 },
-  timelineItem: { flexDirection: 'row', alignItems: 'stretch', marginBottom: 20 },
+  // ─── YENİ NESİL JOURNAL (Zigzag/Staircase) ───
+  journalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, paddingHorizontal: 4 },
+  journalHeaderLeft: { flex: 1 },
+  journalHeaderTitle: { fontFamily: QS_BOLD, fontSize: 22, fontWeight: '800', color: '#1C1714', letterSpacing: -0.5 },
+  journalHeaderSub: { fontFamily: QS_MEDIUM, fontSize: 14, color: C.textLight, marginTop: 2 },
+  journalMoonIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: C.roseLt, alignItems: 'center', justifyContent: 'center' },
   
-  // Sol Tarih Sütunu (Daha yumuşak ve zarif)
-  tlDateCol: { width: 42, alignItems: 'center', paddingTop: 2 },
-  tlDay: { fontFamily: QS_BOLD, fontSize: 18, fontWeight: '800', color: '#334155', lineHeight: 22 }, // Tam siyah yerine tok gri
-  tlMon: { fontFamily: QS_BOLD, fontSize: 10, fontWeight: '700', color: C.primary, letterSpacing: 1, textTransform: 'uppercase', lineHeight: 14 },
-  tlYr: { fontFamily: QS_BOLD, fontSize: 9, fontWeight: '600', color: C.textLight, letterSpacing: 0.5, lineHeight: 12 },
+  zgContainer: { position: 'relative', width: '100%', paddingVertical: 10 },
+  zgCenterLine: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 2, marginLeft: -1, backgroundColor: '#F1F5F9', borderRadius: 2 },
+  zgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  zgColSide: { flex: 1 },
+  zgColCenter: { width: 34, alignItems: 'center', justifyContent: 'center' },
   
-  // Orta Çizgi (Daha ince, Apple tarzı)
-  tlSpineCol: { width: 20, alignItems: 'center', paddingTop: 8 },
-  tlDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FFFFFF', borderWidth: 2.5, borderColor: C.roseMd, zIndex: 1 }, // İçi boş, zarif halka
-  tlLine: { width: 1.5, flex: 1, backgroundColor: '#F1F5F9', marginTop: 4, marginBottom: -20 }, // Pembe yerine soft gri, kesintisiz his
+  zgDotOuter: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: C.roseMd, alignItems: 'center', justifyContent: 'center', shadowColor: C.primary, shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  zgDotInner: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.primary },
   
-  // Rüya Kartı (Çerçevesiz, Yumuşak Gölgeli)
-  tlCard: {
-    flex: 1,
-    marginLeft: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20, // Daha yuvarlak köşeler
-    padding: 18,
-    // Çerçeve (border) tamamen kaldırıldı, yerine Soft Shadow eklendi
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  tlTitle: { fontFamily: SERIF, fontSize: 16, fontWeight: '700', fontStyle: 'italic', color: '#000000', marginBottom: 6, lineHeight: 22 },
-  tlDesc: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#475569', lineHeight: 22, marginBottom: 12 },
+  zgCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  zgDate: { fontFamily: QS_BOLD, fontSize: 11, color: C.primary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+  zgTitle: { fontFamily: SERIF, fontSize: 15, fontWeight: '700', fontStyle: 'italic', color: '#111111', marginBottom: 8, lineHeight: 20 },
+  zgThemeBadge: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  zgThemeText: { fontFamily: QS_BOLD, fontSize: 9, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
   
-  // Alt Kısım (Tema etiketi hap tasarıma çevrildi)
-  tlFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  tlTheme: { 
-    fontFamily: QS_BOLD, 
-    fontSize: 10, 
-    fontWeight: '800', 
-    color: C.primary, 
-    backgroundColor: C.roseLt, // Arkaplan rengi eklendi (Hap görünümü)
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    letterSpacing: 0.8, 
-    textTransform: 'uppercase',
-    overflow: 'hidden'
-  },
-  
-  // Arşiv Butonu
-  archiveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginTop: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 50,
-    backgroundColor: '#F8FAFC', // İçinin beyaz kalması için soft arkaplan
-  },
-  archiveBtnText: { fontFamily: QS_BOLD, fontSize: 14, fontWeight: '700', color: '#111111' },
+  emptyJournal: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20 },
+  emptyJournalIcon: { fontSize: 48, marginBottom: 16 },
+  emptyJournalTitle: { fontFamily: QS_BOLD, fontSize: 18, fontWeight: '700', color: '#1C1714', marginBottom: 6 },
+  emptyJournalSub: { fontFamily: QS_MEDIUM, fontSize: 14, color: C.textLight, textAlign: 'center', lineHeight: 20 },
+
+  archiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginTop: 10, marginBottom: 10, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 50, backgroundColor: '#FFFFFF', gap: 8, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  archiveBtnText: { fontFamily: QS_BOLD, fontSize: 14, fontWeight: '700', color: C.primary },
 
   // ─── Aura Tab ───
-  auraSmallLabel: {
-    fontFamily: QS_BOLD,
-    fontSize: 10,
-    fontWeight: '800',
-    color: C.textLight,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 12,
-  },
-
-  auraArchetypeCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  auraArchetypeAccent: {
-    width: 4,
-    alignSelf: 'stretch',
-    backgroundColor: C.primary,
-    borderTopRightRadius: 3,
-    borderBottomRightRadius: 3,
-  },
-  auraArchetypeTitle: {
-    fontFamily: SERIF,
-    fontSize: 19,
-    fontStyle: 'italic',
-    color: C.textMain,
-    fontWeight: '700',
-    marginBottom: 4,
-    lineHeight: 24,
-  },
+  auraSmallLabel: { fontFamily: QS_BOLD, fontSize: 10, fontWeight: '800', color: C.textLight, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 },
+  auraArchetypeCard: { backgroundColor: '#fff', borderRadius: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', paddingVertical: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  auraArchetypeAccent: { width: 4, alignSelf: 'stretch', backgroundColor: C.primary, borderTopRightRadius: 3, borderBottomRightRadius: 3 },
+  auraArchetypeTitle: { fontFamily: SERIF, fontSize: 19, fontStyle: 'italic', color: C.textMain, fontWeight: '700', marginBottom: 4, lineHeight: 24 },
   auraArchetypeSub: { fontFamily: QS_BOLD, fontSize: 12, color: C.textMuted, lineHeight: 17 },
-
   auraStatsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  auraStatCard: {
-    flex: 1,
-    backgroundColor: C.sand,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: C.borderLight,
-  },
+  auraStatCard: { flex: 1, backgroundColor: C.sand, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', borderWidth: 1, borderColor: C.borderLight },
   auraStatValue: { fontFamily: QS_BOLD, fontSize: 16, fontWeight: '800', color: C.textMain, marginBottom: 2 },
-  auraStatLabel: {
-    fontFamily: QS_BOLD,
-    fontSize: 9,
-    fontWeight: '700',
-    color: C.textLight,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
-
-  auraThemesCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
+  auraStatLabel: { fontFamily: QS_BOLD, fontSize: 9, fontWeight: '700', color: C.textLight, letterSpacing: 1.1, textTransform: 'uppercase', textAlign: 'center' },
+  auraThemesCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   auraThemeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 },
   auraThemeLabel: { fontFamily: QS_BOLD, fontSize: 12, fontWeight: '600', color: C.textMuted, width: 100 },
   auraThemeBarBg: { flex: 1, height: 6, backgroundColor: C.roseLt, borderRadius: 3, overflow: 'hidden' },
   auraThemeBarFill: { height: '100%', backgroundColor: C.primary, borderRadius: 3 },
   auraThemePct: { fontFamily: QS_BOLD, fontSize: 11, fontWeight: '700', color: C.textLight, width: 32, textAlign: 'right' },
-
-  auraLockedWrapper: { position: 'relative', minHeight: 310 },
+  auraLockedWrapper: { position: 'relative', minHeight: 200 },
   auraGhostContent: { padding: 4 },
   auraWordCloud: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 4 },
-  auraWordPill: {
-    backgroundColor: C.roseLt,
-    paddingHorizontal: 13,
-    paddingVertical: 6,
-    borderRadius: 50,
-    borderWidth: 1,
-    borderColor: 'rgba(166,63,79,0.1)',
-  },
+  auraWordPill: { backgroundColor: C.roseLt, paddingHorizontal: 13, paddingVertical: 6, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(166,63,79,0.1)' },
   auraWordText: { fontFamily: QS_BOLD, fontSize: 11, fontWeight: '700', color: C.primary },
-
-  auraLockCard: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 22,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(166,63,79,0.08)',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 6,
-  },
+  auraLockCard: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderRadius: 20, padding: 22, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(166,63,79,0.08)', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: -2 }, elevation: 6 },
   auraLockTitle: { fontFamily: QS_BOLD, fontSize: 15, fontWeight: '700', color: C.textMain, marginBottom: 6, letterSpacing: -0.2 },
   auraLockSub: { fontFamily: QS_BOLD, fontSize: 12, color: C.textMuted, lineHeight: 18, textAlign: 'center', marginBottom: 16 },
   auraLockBtn: { borderRadius: 12, overflow: 'hidden', alignSelf: 'stretch' },
   auraLockBtnGradient: { paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
   auraLockBtnText: { fontFamily: QS_BOLD, fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+
+  // Delete Modal Styles
+  MD_backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.42)', justifyContent: 'center', alignItems: 'center', padding: 18 },
+  MD_card: { width: '100%', backgroundColor: '#FFF', borderRadius: 14, padding: 16 },
+  MD_title: { fontSize: 16, fontWeight: '700', color: '#2D2D3A', marginBottom: 8 },
+  MD_txt: { fontSize: 13, color: '#5E5E72', lineHeight: 19, marginBottom: 12 },
+  MD_input: { borderWidth: 1, borderColor: '#D9DDF0', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, color: '#2D2D3A', fontSize: 13, marginBottom: 12 },
+  MD_actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  MD_cancel: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 9, backgroundColor: '#EEF1FF' },
+  MD_cancelTxt: { color: '#3B4570', fontWeight: '600', fontSize: 13 },
+  MD_danger: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 9, backgroundColor: '#D14343', minWidth: 110, alignItems: 'center', justifyContent: 'center' },
+  MD_dangerTxt: { color: '#FFF', fontWeight: '600', fontSize: 13 },
 });
 
-// ─── Delete Modal Styles ───────────────────────────────────────────────────────
-const MD = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.42)', justifyContent: 'center', alignItems: 'center', padding: 18 },
-  card: { width: '100%', backgroundColor: '#FFF', borderRadius: 14, padding: 16 },
-  title: { fontSize: 16, fontWeight: '700', color: '#2D2D3A', marginBottom: 8 },
-  txt: { fontSize: 13, color: '#5E5E72', lineHeight: 19, marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#D9DDF0', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, color: '#2D2D3A', fontSize: 13, marginBottom: 12 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-  cancel: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 9, backgroundColor: '#EEF1FF' },
-  cancelTxt: { color: '#3B4570', fontWeight: '600', fontSize: 13 },
-  danger: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 9, backgroundColor: '#D14343', minWidth: 110, alignItems: 'center', justifyContent: 'center' },
-  dangerTxt: { color: '#FFF', fontWeight: '600', fontSize: 13 },
-});
+const MD = {
+  backdrop: styles.MD_backdrop,
+  card: styles.MD_card,
+  title: styles.MD_title,
+  txt: styles.MD_txt,
+  input: styles.MD_input,
+  actions: styles.MD_actions,
+  cancel: styles.MD_cancel,
+  cancelTxt: styles.MD_cancelTxt,
+  danger: styles.MD_danger,
+  dangerTxt: styles.MD_dangerTxt,
+};

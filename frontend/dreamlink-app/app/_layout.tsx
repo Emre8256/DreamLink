@@ -3,12 +3,6 @@ import { useColorScheme } from '@/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import {
-  Quicksand_400Regular,
-  Quicksand_500Medium,
-  Quicksand_600SemiBold,
-  Quicksand_700Bold,
-} from '@expo-google-fonts/quicksand';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect } from 'react';
@@ -31,14 +25,14 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
-    Quicksand_400Regular,
-    Quicksand_500Medium,
-    Quicksand_600SemiBold,
-    Quicksand_700Bold,
+    Quicksand_400Regular: require('../assets/fonts/Quicksand_400Regular.ttf'),
+    Quicksand_500Medium: require('../assets/fonts/Quicksand_500Medium.ttf'),
+    Quicksand_600SemiBold: require('../assets/fonts/Quicksand_600SemiBold.ttf'),
+    Quicksand_700Bold: require('../assets/fonts/Quicksand_700Bold.ttf'),
   });
 
   useEffect(() => {
-    if (error) throw error;
+    if (error) console.warn('Font loading error:', error);
   }, [error]);
 
   useEffect(() => {
