@@ -1,249 +1,517 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Dimensions, Platform } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, Easing, Image, Linking, StyleSheet, Text, View, Modal, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
+import { Mail, X } from 'lucide-react-native';
 import { AnimatedPressable } from '../components/AnimatedPressable';
+import { StatusBar } from 'expo-status-bar';
+import { useAuth } from '../context/AuthContext';
+import { login as apiLogin } from '../services/api';
+const { height: SCREEN_H } = Dimensions.get('window');
 
-const { width, height } = Dimensions.get('window');
+const C = {
+  ink: '#0E0B0D',
+  rose: '#C4506A',
+  roseDeep: '#8B2E48',
+  pearl: '#FFFDF9',
+  warmGold: '#E8C88A',
+  softPink: 'rgba(196,80,106,0.35)',
+  white: '#FFFFFF',
+  glass: 'rgba(255,255,255,0.12)',
+  glassBorder: 'rgba(255,255,255,0.22)',
+};
 
 export default function WelcomeScreen() {
-    const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
 
-    // Animations
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const translateYAnim = useRef(new Animated.Value(20)).current;
-    const glowAnim = useRef(new Animated.Value(0.2)).current;
+  /* ── TEST ONLY: DEV LOGIN STATE ── */
+  const { login: contextLogin } = useAuth();
+  const [isTestModalVisible, setIsTestModalVisible] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
+  const [testPassword, setTestPassword] = useState('');
+  const [testLoading, setTestLoading] = useState(false);
+  const [testError, setTestError] = useState('');
 
-    useEffect(() => {
-        // Ken Burns effect
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(scaleAnim, {
-                    toValue: 1.15,
-                    duration: 20000,
-                    easing: Easing.inOut(Easing.ease),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(scaleAnim, {
-                    toValue: 1,
-                    duration: 20000,
-                    easing: Easing.inOut(Easing.ease),
-                    useNativeDriver: true,
-                }),
-            ])
-        ).start();
+  const handleTestLogin = async () => {
+    if (!testEmail || !testPassword) return;
+    setTestLoading(true);
+    setTestError('');
+    try {
+      const token = await apiLogin({
+        email: testEmail.trim(),
+        password: testPassword,
+      });
+      await contextLogin(token);
+      setIsTestModalVisible(false);
+    } catch (err: any) {
+      console.error('Test login failed:', err);
+      setTestError(err.message || 'Login failed. Please check credentials.');
+    } finally {
+      setTestLoading(false);
+    }
+  };
+  /* ────────────────────────────────── */
 
-        // Fade Up effect
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 800,
-                delay: 200,
-                easing: Easing.out(Easing.ease),
-                useNativeDriver: true,
-            }),
-            Animated.timing(translateYAnim, {
-                toValue: 0,
-                duration: 800,
-                delay: 200,
-                easing: Easing.out(Easing.ease),
-                useNativeDriver: true,
-            })
-        ]).start();
+  /* ── Animations ── */
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  const slideUp = useRef(new Animated.Value(40)).current;
 
-        // Glow effect
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(glowAnim, {
-                    toValue: 0.6,
-                    duration: 3000,
-                    useNativeDriver: false, // TextShadow can't use native driver
-                }),
-                Animated.timing(glowAnim, {
-                    toValue: 0.2,
-                    duration: 3000,
-                    useNativeDriver: false,
+  useEffect(() => {
+    /* Content entrance */
+    Animated.parallel([
+      Animated.timing(fadeIn, {
+        toValue: 1,
+        duration: 1200,
+        delay: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideUp, {
+        toValue: 0,
+        duration: 1200,
+        delay: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeIn, slideUp]);
+
+  /* ── Interpolations ── */
+
+  const contentAnim = {
+    opacity: fadeIn,
+    transform: [{ translateY: slideUp }],
+  };
+
+  return (
+    <View style={styles.screen}>
+      <StatusBar style="light" />
+      {/* ── Dreamscape background ── */}
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        {/* Deep night sky background image */}
+        <Image
+          source={require('../assets/images/dream_bg.png')}
+          resizeMode="cover"
+          style={styles.sky}
+        />
+
+        {/* Bottom cinematic fade */}
+        <LinearGradient
+          colors={['rgba(14,11,13,0)', 'rgba(14,11,13,0.55)', 'rgba(14,11,13,0.88)']}
+          locations={[0, 0.5, 1]}
+          style={styles.bottomFade}
+        />
+      </View>
+
+      {/* ── Foreground content ── */}
+      <View
+        style={[
+          styles.foreground,
+          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 },
+        ]}
+      >
+        {/* Brand */}
+        <Animated.View style={[styles.brandArea, contentAnim]}>
+          <Text style={styles.brandName}>Dream{'\n'}Link</Text>
+        </Animated.View>
+
+        {/* Hero + Actions pinned to bottom */}
+        <Animated.View
+          style={[styles.bottomArea, contentAnim]}
+          needsOffscreenAlphaCompositing={true}
+        >
+          <View style={styles.heroCopy}>
+            <Text style={styles.headline}>Where dreams{'\n'}become connections</Text>
+          </View>
+
+          <View style={styles.actions}>
+            <AnimatedPressable
+              style={styles.googleButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/(onboarding)/identity',
+                  params: { provider: 'google' },
                 })
-            ])
-        ).start();
-    }, []);
+              }
+            >
+              <Image
+                source={require('../assets/images/google_logo.png')}
+                style={styles.googleLogo}
+              />
+              <Text style={styles.googleText}>Continue with Google</Text>
+            </AnimatedPressable>
 
-    const glowStyle = {
-        textShadowColor: glowAnim.interpolate({
-            inputRange: [0.2, 0.6],
-            outputRange: ['rgba(183, 110, 121, 0.2)', 'rgba(183, 110, 121, 0.6)']
-        }),
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: glowAnim.interpolate({
-            inputRange: [0.2, 0.6],
-            outputRange: [5, 15]
-        })
-    };
+            <AnimatedPressable
+              style={styles.emailButton}
+              onPress={() => router.push('/login')}
+            >
+              <Mail color={C.white} size={19} strokeWidth={2} />
+              <Text style={styles.emailText}>Continue with Email</Text>
+            </AnimatedPressable>
 
-    return (
-        <EdgeToEdgeLayout backgroundColor="#121212" statusBarStyle="light-content" statusBarBg="#121212">
-            <View style={styles.container}>
-                {/* Background Layer */}
-                <View style={StyleSheet.absoluteFill}>
-                    <Animated.Image
-                        source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB77wcWuewCTlP_OPp9rBxds8qQ4wYBYtBT7NrqKbrBnbp5-Cm9WkiR_HmKu3FBiVt-XCW4IEEmlzR4NKTeeF2THz40-hlIX0ZGAz0UIBRbkapfToRlKiN3qjbuaZXjBflre6GWHSylAa3Hyxe3ywUx765BqkxZIbAc_YCHLliEiqOvTraH7AIPgvuC0x70cthUpa9GFVGLiPmVruKNoxX602-7CY__aWSCKlvnQ1DKcSzYxWgjZ018COL1uv87CZ5vc-hCJD7nY-w' }}
-                        style={[styles.backgroundImage, { transform: [{ scale: scaleAnim }] }]}
-                        resizeMode="cover"
-                    />
-                    <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.8)', '#000000']}
-                        locations={[0, 0.6, 1]}
-                        style={StyleSheet.absoluteFill}
-                    />
+            {/* ── TEST ONLY: REMOVE BEFORE PRODUCTION ── */}
+            <AnimatedPressable
+              style={styles.testButton}
+              onPress={() => setIsTestModalVisible(true)}
+            >
+              <Text style={styles.testButtonText}>Developer / Test Login</Text>
+            </AnimatedPressable>
+            {/* ───────────────────────────────────────── */}
+
+            <Text style={styles.terms}>
+              By continuing, you agree to our{' '}
+              <Text
+                style={styles.link}
+                onPress={() => Linking.openURL('https://example.com/terms')}
+              >
+                Terms of Service
+              </Text>{' '}
+              and{' '}
+              <Text
+                style={styles.link}
+                onPress={() => Linking.openURL('https://example.com/privacy')}
+              >
+                Privacy Policy
+              </Text>
+              .
+            </Text>
+          </View>
+        </Animated.View>
+      </View>
+
+      {/* ── TEST ONLY: DEV LOGIN MODAL ── */}
+      <Modal
+        visible={isTestModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsTestModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalKeyboardAvoiding}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Test Login</Text>
+                <AnimatedPressable
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setIsTestModalVisible(false);
+                    setTestError('');
+                  }}
+                >
+                  <X color={C.white} size={20} />
+                </AnimatedPressable>
+              </View>
+
+              <Text style={styles.modalSubtitle}>
+                Log in directly with a test email and password.
+              </Text>
+
+              {testError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{testError}</Text>
                 </View>
+              ) : null}
 
-                {/* Main Content */}
-                <View style={[styles.main, { paddingTop: 64, paddingBottom: Platform.OS === 'ios' ? insets.bottom + 48 : 48 }]}>
-                {/* Top Branding */}
-                <Animated.View style={[styles.brandingContainer, { opacity: fadeAnim, transform: [{ translateY: translateYAnim }] }]}>
-                    <Animated.Text style={[styles.logo, glowStyle]}>DREAM-LINK</Animated.Text>
-                </Animated.View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>EMAIL</Text>
+                <TextInput
+                  value={testEmail}
+                  onChangeText={setTestEmail}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  placeholder="test@example.com"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  style={styles.modalInput}
+                  selectionColor={C.rose}
+                />
+              </View>
 
-                {/* Onboarding Card */}
-                <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: translateYAnim }] }]}>
-                    <View style={styles.copySection}>
-                        <Text style={styles.title}>Find your missing piece.</Text>
-                        <Text style={styles.subtitle}>Join the most exclusive community.</Text>
-                    </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>PASSWORD</Text>
+                <TextInput
+                  value={testPassword}
+                  onChangeText={setTestPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="••••••••"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  style={styles.modalInput}
+                  selectionColor={C.rose}
+                />
+              </View>
 
-                    <View style={styles.actionSection}>
-                        <AnimatedPressable style={styles.primaryButton} hapticType="light" onPress={() => router.push('/register')}>
-                            <Text style={styles.primaryButtonText}>CREATE AN ACCOUNT</Text>
-                        </AnimatedPressable>
-
-                        <AnimatedPressable style={styles.secondaryButton} hapticType="light" onPress={() => router.push('/login')}>
-                            <Text style={styles.secondaryButtonText}>I have an account</Text>
-                        </AnimatedPressable>
-                    </View>
-
-                    <View style={styles.legalSection}>
-                        <View style={styles.legalLinks}>
-                            <Text style={styles.legalText}>TERMS OF SERVICE</Text>
-                            <Text style={styles.legalDot}>•</Text>
-                            <Text style={styles.legalText}>PRIVACY POLICY</Text>
-                        </View>
-                    </View>
-                </Animated.View>
-                </View>
+              <AnimatedPressable
+                disabled={testLoading || !testEmail || !testPassword}
+                style={[
+                  styles.modalSubmitButton,
+                  (testLoading || !testEmail || !testPassword) && styles.modalSubmitButtonDisabled
+                ]}
+                onPress={handleTestLogin}
+              >
+                {testLoading ? (
+                  <ActivityIndicator color={C.ink} size="small" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>Login & Redirect</Text>
+                )}
+              </AnimatedPressable>
             </View>
-        </EdgeToEdgeLayout>
-    );
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+      {/* ───────────────────────────────── */}
+    </View>
+  );
 }
 
+/* ────────────────────────────────────────────────────── */
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#121212',
-    },
-    backgroundImage: {
-        width: width,
-        height: height,
-    },
-    main: {
-        flex: 1,
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-    },
-    brandingContainer: {
-        alignItems: 'center',
-    },
-    logo: {
-        fontSize: 32,
-        fontWeight: '800',
-        color: '#B76E79',
-        letterSpacing: 4.8, // roughly 0.15em tracking
-    },
-    card: {
-        width: '100%',
-        maxWidth: 400,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        borderRadius: 40,
-        padding: 32,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    copySection: {
-        alignItems: 'center',
-        marginBottom: 32,
-    },
-    title: {
-        fontSize: 30,
-        fontWeight: '700',
-        color: '#FFFFFF',
-        textAlign: 'center',
-        marginBottom: 8,
-        letterSpacing: -0.5,
-    },
-    subtitle: {
-        fontSize: 16,
-        fontWeight: '300',
-        color: 'rgba(255, 255, 255, 0.6)',
-        textAlign: 'center',
-    },
-    actionSection: {
-        width: '100%',
-        marginBottom: 24,
-    },
-    primaryButton: {
-        backgroundColor: '#B76E79',
-        borderRadius: 30,
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        alignItems: 'center',
-        marginBottom: 16,
-        shadowColor: '#B76E79',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
-    },
-    primaryButtonText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '700',
-        letterSpacing: 1.2,
-    },
-    secondaryButton: {
-        backgroundColor: 'transparent',
-        borderRadius: 30,
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
-    },
-    secondaryButtonText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-    },
-    legalSection: {
-        alignItems: 'center',
-    },
-    legalLinks: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
-    },
-    legalText: {
-        fontSize: 10,
-        fontWeight: '500',
-        color: 'rgba(255, 255, 255, 0.4)',
-        letterSpacing: 2,
-    },
-    legalDot: {
-        fontSize: 10,
-        color: 'rgba(255, 255, 255, 0.4)',
-    }
+  screen: {
+    flex: 1,
+    backgroundColor: C.ink,
+  },
+  sky: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  /* Bottom cinematic fade */
+  bottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '52%',
+  },
+
+  /* ── Foreground layout ── */
+  foreground: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 28,
+  },
+
+  /* Brand */
+  brandArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SCREEN_H * 0.12,
+    width: '100%',
+  },
+  brandName: {
+    color: C.pearl,
+    fontFamily: 'PlayfairDisplay-Regular',
+    fontSize: 38,
+    lineHeight: 44,
+    letterSpacing: 6,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 6,
+  },
+
+  /* Hero */
+  bottomArea: {
+    gap: 32,
+  },
+  heroCopy: {
+    gap: 14,
+  },
+  headline: {
+    color: C.white,
+    fontFamily: 'PlayfairDisplay-Regular',
+    fontSize: 44,
+    lineHeight: 52,
+    letterSpacing: -0.4,
+  },
+
+  /* Action buttons */
+  actions: {
+    gap: 12,
+  },
+  googleButton: {
+    height: 58,
+    borderRadius: 20,
+    backgroundColor: C.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 28,
+    elevation: 10,
+  },
+  googleLogo: {
+    width: 21,
+    height: 21,
+  },
+  googleText: {
+    color: C.ink,
+    fontFamily: 'Quicksand_700Bold',
+    fontSize: 16,
+  },
+  emailButton: {
+    height: 58,
+    borderRadius: 20,
+    backgroundColor: C.glass,
+    borderWidth: 1,
+    borderColor: C.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  emailText: {
+    color: C.white,
+    fontFamily: 'Quicksand_700Bold',
+    fontSize: 16,
+  },
+  terms: {
+    color: 'rgba(255,255,255,0.5)',
+    fontFamily: 'Quicksand_500Medium',
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+    paddingHorizontal: 16,
+    marginTop: 2,
+  },
+  link: {
+    color: 'rgba(255,255,255,0.85)',
+    textDecorationLine: 'underline',
+    fontFamily: 'Quicksand_700Bold',
+  },
+  /* ── TEST ONLY: STYLES ── */
+  testButton: {
+    height: 58,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(232, 200, 138, 0.4)',
+    backgroundColor: 'rgba(232, 200, 138, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  testButtonText: {
+    color: C.warmGold,
+    fontFamily: 'Quicksand_700Bold',
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(14, 11, 13, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalKeyboardAvoiding: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#1E171B',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 24,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    color: C.white,
+    fontFamily: 'PlayfairDisplay-Regular',
+    fontSize: 24,
+    letterSpacing: 1,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSubtitle: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontFamily: 'Quicksand_500Medium',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(196, 80, 106, 0.15)',
+    borderColor: 'rgba(196, 80, 106, 0.3)',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  errorText: {
+    color: '#FF6B8B',
+    fontFamily: 'Quicksand_600SemiBold',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    color: C.warmGold,
+    fontFamily: 'Quicksand_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.5,
+  },
+  modalInput: {
+    height: 52,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    color: C.white,
+    fontFamily: 'Quicksand_600SemiBold',
+    fontSize: 15,
+  },
+  modalSubmitButton: {
+    height: 54,
+    backgroundColor: C.white,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    shadowColor: C.white,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalSubmitButtonDisabled: {
+    opacity: 0.5,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  modalSubmitText: {
+    color: C.ink,
+    fontFamily: 'Quicksand_700Bold',
+    fontSize: 16,
+  },
+  /* ─────────────────────── */
 });

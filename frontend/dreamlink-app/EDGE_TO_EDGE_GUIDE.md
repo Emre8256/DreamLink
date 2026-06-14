@@ -122,9 +122,8 @@ All screens in Dream-Link now use **EdgeToEdgeLayout** component for proper edge
 - ✅ `app/(tabs)/discover.tsx` (Discover)
 - ✅ `app/(tabs)/chat.tsx` (Chats)
 
-### Authentication Screens (3)
+### Authentication Screens (2)
 - ✅ `app/login.tsx`
-- ✅ `app/register.tsx`
 - ✅ `app/welcome.tsx`
 
 ### Detail/Modal Screens (8)
@@ -153,7 +152,7 @@ All screens in Dream-Link now use **EdgeToEdgeLayout** component for proper edge
 - [ ] Test on devices with notch (iPhone 12+, some Android phones)
 - [ ] Test on devices with home indicator
 - [ ] Verify bottom content clearance on all screens
-- [ ] Test keyboard behavior on login/register screens
+- [ ] Test keyboard behavior on login/onboarding screens
 
 ## Future Updates
 

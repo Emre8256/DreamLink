@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Alert,
   FlatList,
@@ -12,9 +13,13 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  StatusBar,
+  Modal,
+  Pressable,
+  BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import {
   getMessages,
@@ -27,7 +32,7 @@ import wsService from '../services/websocket';
 
 /* ─────────────────────────── Tokens & Theme ─────────────────────────── */
 const QS_BOLD = 'Quicksand_700Bold';
-const SERIF = Platform.OS === 'ios' ? 'Georgia' : 'serif';
+const SERIF = 'Quicksand_700Bold';
 
 const C = {
   primary: '#A63F4F',      // Koyu Rose (Ana Renk)
@@ -64,9 +69,13 @@ const formatTime = (date: Date) =>
 const CustomHeader = ({
   title,
   avatarUrl,
+  onPressProfile,
+  onPressMenu,
 }: {
   title: string;
   avatarUrl?: string | null;
+  onPressProfile?: () => void;
+  onPressMenu?: () => void;
 }) => {
   const router = useRouter();
 
@@ -77,8 +86,12 @@ const CustomHeader = ({
           <Ionicons name="chevron-back" size={28} color={C.textMain} />
         </TouchableOpacity>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ position: 'relative' }}>
+        <TouchableOpacity
+          onPress={onPressProfile}
+          activeOpacity={0.7}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+        >
+          <View>
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
             ) : (
@@ -88,21 +101,17 @@ const CustomHeader = ({
                 </Text>
               </View>
             )}
-            <View style={styles.onlineDot} />
           </View>
 
-          <View style={{ flexDirection: 'column' }}>
-            <Text style={styles.headerName} numberOfLines={1}>
-              {title}
-            </Text>
-            <Text style={styles.headerStatus}>Online</Text>
-          </View>
-        </View>
+          <Text style={styles.headerName} numberOfLines={1}>
+            {title}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity
         style={styles.headerMenuBtn}
-        onPress={() => router.push('/settings' as any)}
+        onPress={onPressMenu}
         activeOpacity={0.65}
       >
         <Ionicons name="ellipsis-vertical" size={22} color={C.textMain} />
@@ -131,15 +140,38 @@ const MessageBubble = ({
   </View>
 );
 
-/* ─────────────────── Main Screen ─────────────────────────────── */
 export default function ChatboxScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useAnimatedKeyboard();
+  const router = useRouter();
 
-  const { conversationId, name, avatar } = useLocalSearchParams<{
+  const handlePressProfile = () => {
+    const getDreamId = (id: string, nickname?: string) => {
+      if (id === 'conv-1' || nickname === 'Deren') return 'd1';
+      if (id === 'conv-2' || nickname === 'Emre') return 'd2';
+      if (id === 'conv-3' || nickname === 'Melis') return 'd3';
+      if (id === 'conv-4' || nickname === 'Zeynep') return 'd6';
+      if (id === 'conv-5' || nickname === 'Can') return 'd5';
+      return id;
+    };
+
+    router.push({
+      pathname: '/user-card',
+      params: {
+        dreamId: getDreamId(conversationId, name),
+        nickname: name || '',
+        avatarUrl: avatar || '',
+        hideButtons: 'true'
+      }
+    });
+  };
+
+  const { conversationId, name, avatar, themeMatch, disconnected } = useLocalSearchParams<{
     conversationId: string;
     name: string;
     avatar: string;
+    themeMatch?: string;
+    disconnected?: string;
   }>();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -148,6 +180,40 @@ export default function ChatboxScreen() {
   const [currentUser, setCurrentUser] = useState<UserProfileResponse | null>(null);
 
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
+  const bottomSheetRef = useRef<BottomSheet>(null);
+
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        pressBehavior="close"
+        opacity={0.4}
+      />
+    ),
+    []
+  );
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [sheetView, setSheetView] = useState<'main' | 'block' | 'report' | 'remove'>('main');
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (isSheetOpen) {
+        if (sheetView !== 'main') {
+          setSheetView('main');
+        } else {
+          bottomSheetRef.current?.close();
+        }
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backHandler.remove();
+  }, [isSheetOpen, sheetView]);
+
 
   const inputDockAnimatedStyle = useAnimatedStyle(() => {
     const lift = Math.max(0, keyboard.height.value - insets.bottom);
@@ -164,23 +230,90 @@ export default function ChatboxScreen() {
 
     const init = async () => {
       try {
-        const [me, msgs] = await Promise.all([
-          getMyProfile(),
-          getMessages(conversationId),
-        ]);
+        const me = await getMyProfile();
         setCurrentUser(me);
 
-        const formatted: ChatMessage[] = msgs
-          .map((m: MessageResponse) => ({
-            id: m.id,
-            text: m.content,
-            senderId: m.senderId,
-            createdAt: new Date(m.sentAt),
-          }))
-          .sort(
-            (a: ChatMessage, b: ChatMessage) =>
-              a.createdAt.getTime() - b.createdAt.getTime()
-          );
+        let formatted: ChatMessage[] = [];
+        if (conversationId.startsWith('conv-')) {
+          const now = Date.now();
+          if (conversationId === 'conv-2') {
+            formatted = [
+              {
+                id: 'm1',
+                text: 'Hey! I saw the match profile. Really interesting similarity index.',
+                senderId: 'user-2',
+                createdAt: new Date(now - 1000 * 60 * 60 * 2),
+              },
+              {
+                id: 'm2',
+                text: 'Yeah! The symbol of the floating keys was exactly the same.',
+                senderId: me.id,
+                createdAt: new Date(now - 1000 * 60 * 60 * 1.5),
+              },
+              {
+                id: 'm3',
+                text: 'I think our dreams are overlapping. What time did you wake up?',
+                senderId: 'user-2',
+                createdAt: new Date(now - 1000 * 60 * 45),
+              }
+            ];
+          } else if (conversationId === 'conv-3') {
+            formatted = [
+              {
+                id: 'm1',
+                text: 'Did you also see the forest path in your dream?',
+                senderId: 'user-3',
+                createdAt: new Date(now - 1000 * 60 * 60 * 5),
+              },
+              {
+                id: 'm2',
+                text: 'Yes! It had numbered doors.',
+                senderId: me.id,
+                createdAt: new Date(now - 1000 * 60 * 60 * 4),
+              },
+              {
+                id: 'm3',
+                text: 'I wrote down the details. Talk to you tomorrow!',
+                senderId: 'user-3',
+                createdAt: new Date(now - 1000 * 60 * 60 * 3),
+              }
+            ];
+          } else if (conversationId === 'conv-5') {
+            formatted = [
+              {
+                id: 'm1',
+                text: 'The gravity in the city was reversed, right?',
+                senderId: 'user-5',
+                createdAt: new Date(now - 1000 * 60 * 60 * 35),
+              },
+              {
+                id: 'm2',
+                text: 'Absolutely. We were walking on the sides of skyscrapers.',
+                senderId: me.id,
+                createdAt: new Date(now - 1000 * 60 * 60 * 34),
+              },
+              {
+                id: 'm3',
+                text: 'Exactly, the physics of it is mind-bending.',
+                senderId: 'user-5',
+                createdAt: new Date(now - 1000 * 60 * 60 * 32),
+              }
+            ];
+          }
+        } else {
+          const msgs = await getMessages(conversationId);
+          formatted = msgs
+            .map((m: MessageResponse) => ({
+              id: m.id,
+              text: m.content,
+              senderId: m.senderId,
+              createdAt: new Date(m.sentAt),
+            }))
+            .sort(
+              (a: ChatMessage, b: ChatMessage) =>
+                a.createdAt.getTime() - b.createdAt.getTime()
+            );
+        }
         setMessages(formatted);
       } catch (err) {
         console.error('Failed to load chat', err);
@@ -195,7 +328,7 @@ export default function ChatboxScreen() {
 
   /* ── WebSocket – incoming messages ── */
   useEffect(() => {
-    if (!conversationId || !currentUser) return;
+    if (!conversationId || !currentUser || conversationId.startsWith('conv-')) return;
 
     const dest = `/topic/chat/${conversationId}`;
     wsService.subscribe(dest, (payload: MessageResponse) => {
@@ -241,14 +374,24 @@ export default function ChatboxScreen() {
     setMessages(prev => [...prev, optimistic]);
 
     try {
-      const saved = await sendMessage(conversationId, text);
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === tempId
-            ? { ...m, id: saved.id, pending: false }
-            : m
-        )
-      );
+      if (conversationId.startsWith('conv-')) {
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === tempId
+              ? { ...m, id: `mock-${Date.now()}`, pending: false }
+              : m
+          )
+        );
+      } else {
+        const saved = await sendMessage(conversationId, text);
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === tempId
+              ? { ...m, id: saved.id, pending: false }
+              : m
+          )
+        );
+      }
     } catch (err) {
       console.error('Send failed', err);
       showAlert('Error', 'Message could not be sent.');
@@ -267,9 +410,16 @@ export default function ChatboxScreen() {
   }
 
   return (
-    <EdgeToEdgeLayout backgroundColor={C.bg} statusBarStyle="dark-content" statusBarBg={C.bg}>
-      <View style={styles.container}>
-        <CustomHeader title={name || 'Chat'} avatarUrl={avatar} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <View style={{ paddingTop: insets.top, backgroundColor: C.bg, zIndex: 10 }}>
+        <CustomHeader
+          title={name || 'Chat'}
+          avatarUrl={avatar}
+          onPressProfile={handlePressProfile}
+          onPressMenu={() => bottomSheetRef.current?.expand()}
+        />
+      </View>
 
       <FlatList
         ref={flatListRef}
@@ -281,7 +431,7 @@ export default function ChatboxScreen() {
             <View style={styles.matchBanner}>
               <Text style={styles.matchBannerTitle}>DREAM CONNECTION ESTABLISHED</Text>
               <Text style={styles.matchBannerSub}>
-                You matched on this dream: <Text style={styles.matchBannerDream}>"Lost City Atlas"</Text>
+                You matched on this dream: <Text style={styles.matchBannerDream}>"{themeMatch || 'Shared Dream'}"</Text>
               </Text>
             </View>
           </View>
@@ -297,42 +447,242 @@ export default function ChatboxScreen() {
         }
       />
 
-      {/* Input Toolbar */}
-      <Animated.View
-        style={[
-          styles.footerContainer,
-          inputDockAnimatedStyle,
-          { paddingBottom: Math.max(insets.bottom + 8, 10) },
-        ]}
-      >
-        <View style={styles.toolbar}>
-          <TouchableOpacity
-            style={styles.toolbarAddBtn}
-            onPress={() => showAlert('Attachment', 'Menu will open')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="add" size={26} color={C.textLight} />
-          </TouchableOpacity>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Type a message..."
-            placeholderTextColor={C.textLight}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={500}
-            onSubmitEditing={handleSend}
-            blurOnSubmit={false}
-          />
-
-          <TouchableOpacity style={styles.sendBtn} onPress={handleSend} activeOpacity={0.85}>
-            <Ionicons name="send" size={16} color="#fff" style={{ transform: [{ rotate: '-45deg' }, { translateX: 2 }] }} />
-          </TouchableOpacity>
+      {/* Input Toolbar or Disconnected Footer */}
+      {disconnected === 'true' ? (
+        <View
+          style={[
+            styles.disconnectedFooter,
+            { paddingBottom: Math.max(insets.bottom + 16, 20) },
+          ]}
+        >
+          <Ionicons name="alert-circle-outline" size={20} color={C.textMuted} style={{ marginRight: 8 }} />
+          <Text style={styles.disconnectedFooterText}>
+            This connection has been removed. You can no longer send messages.
+          </Text>
         </View>
-      </Animated.View>
+      ) : (
+        <Animated.View
+          style={[
+            styles.footerContainer,
+            inputDockAnimatedStyle,
+            { paddingBottom: Math.max(insets.bottom + 8, 10) },
+          ]}
+        >
+          <View style={styles.toolbar}>
+            <TouchableOpacity
+              style={styles.toolbarAddBtn}
+              onPress={() => showAlert('Attachment', 'Menu will open')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add" size={26} color={C.textLight} />
+            </TouchableOpacity>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Type a message..."
+              placeholderTextColor={C.textLight}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={500}
+              onSubmitEditing={handleSend}
+              blurOnSubmit={false}
+            />
+
+            <TouchableOpacity style={styles.sendBtn} onPress={handleSend} activeOpacity={0.85}>
+              <Ionicons name="send" size={16} color="#fff" style={{ transform: [{ rotate: '-45deg' }, { translateX: 2 }] }} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* ── Bottom Sheet Options Menu ── */}
+      <View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]} pointerEvents="box-none">
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={-1}
+          enableDynamicSizing={true}
+          enablePanDownToClose={true}
+          enableContentPanningGesture={false}
+          backdropComponent={renderBackdrop}
+          backgroundStyle={{ backgroundColor: '#FFFFFF', borderRadius: 28 }}
+          handleIndicatorStyle={{ backgroundColor: '#E2E8F0', width: 40 }}
+          onChange={(index) => {
+            setIsSheetOpen(index >= 0);
+            if (index === -1) {
+              setSheetView('main');
+            }
+          }}
+        >
+          <BottomSheetView style={{ paddingBottom: insets.bottom + 16, paddingHorizontal: 24, paddingTop: 12 }}>
+            {sheetView === 'main' && (
+              <>
+                <Text style={styles.menuTitle}>Chat Options</Text>
+                
+                <View style={styles.menuOptionsList}>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => setSheetView('block')}
+                  >
+                    <Ionicons name="ban-outline" size={20} color={C.primary} style={{ marginRight: 12 }} />
+                    <Text style={[styles.menuItemText, { color: C.textMain }]}>Block User</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => setSheetView('report')}
+                  >
+                    <Ionicons name="alert-circle-outline" size={20} color={C.primary} style={{ marginRight: 12 }} />
+                    <Text style={[styles.menuItemText, { color: C.textMain }]}>Report User</Text>
+                  </TouchableOpacity>
+
+                  {disconnected === 'true' ? (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        bottomSheetRef.current?.close();
+                        setTimeout(() => {
+                          Alert.alert('Deleted', 'Chat has been deleted.');
+                          router.back();
+                        }, 300);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={C.primary} style={{ marginRight: 12 }} />
+                      <Text style={[styles.menuItemText, { color: C.textMain }]}>Delete Chat</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => setSheetView('remove')}
+                    >
+                      <Ionicons name="close-circle-outline" size={20} color={C.primary} style={{ marginRight: 12 }} />
+                      <Text style={[styles.menuItemText, { color: C.textMain }]}>Remove Connection</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
+            )}
+
+            {sheetView === 'block' && (
+              <View style={styles.confirmContainer}>
+                <Text style={styles.confirmTitle}>Block User?</Text>
+                <Text style={styles.confirmDesc}>
+                  Are you sure you want to block {name || 'this user'}? You will no longer see each other's profiles or messages.
+                </Text>
+                
+                <TouchableOpacity
+                  style={styles.confirmBtnPrimary}
+                  onPress={() => {
+                    bottomSheetRef.current?.close();
+                    setTimeout(() => {
+                      Alert.alert('Blocked', 'User has been blocked.');
+                      router.back();
+                    }, 300);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={['#A63F4F', '#7D2D3A']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.confirmBtnPrimaryGradient}
+                  >
+                    <Text style={styles.confirmBtnPrimaryText}>Block User</Text>
+                    <Ionicons name="ban" size={18} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.confirmBtnSecondary}
+                  onPress={() => setSheetView('main')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.confirmBtnSecondaryText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {sheetView === 'report' && (
+              <View style={styles.confirmContainer}>
+                <Text style={styles.confirmTitle}>Report User?</Text>
+                <Text style={styles.confirmDesc}>
+                  Are you sure you want to report {name || 'this user'} for inappropriate behavior? We will review this profile within 24 hours.
+                </Text>
+                
+                <TouchableOpacity
+                  style={styles.confirmBtnPrimary}
+                  onPress={() => {
+                    bottomSheetRef.current?.close();
+                    setTimeout(() => {
+                      Alert.alert('Reported', 'Thank you. We will review this profile.');
+                      router.back();
+                    }, 300);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={['#A63F4F', '#7D2D3A']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.confirmBtnPrimaryGradient}
+                  >
+                    <Text style={styles.confirmBtnPrimaryText}>Report User</Text>
+                    <Ionicons name="alert-circle" size={18} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.confirmBtnSecondary}
+                  onPress={() => setSheetView('main')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.confirmBtnSecondaryText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {sheetView === 'remove' && (
+              <View style={styles.confirmContainer}>
+                <Text style={styles.confirmTitle}>Remove Connection?</Text>
+                <Text style={styles.confirmDesc}>
+                  Are you sure you want to remove your connection with {name || 'this user'}? This action cannot be undone.
+                </Text>
+                
+                <TouchableOpacity
+                  style={styles.confirmBtnPrimary}
+                  onPress={() => {
+                    bottomSheetRef.current?.close();
+                    setTimeout(() => {
+                      Alert.alert('Removed', 'Connection has been removed.');
+                      router.back();
+                    }, 300);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={['#A63F4F', '#7D2D3A']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.confirmBtnPrimaryGradient}
+                  >
+                    <Text style={styles.confirmBtnPrimaryText}>Remove Connection</Text>
+                    <Ionicons name="close-circle" size={18} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.confirmBtnSecondary}
+                  onPress={() => setSheetView('main')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.confirmBtnSecondaryText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </BottomSheetView>
+        </BottomSheet>
       </View>
-    </EdgeToEdgeLayout>
+    </View>
   );
 }
 
@@ -363,19 +713,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarInitial: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 0,
-    width: 12,
-    height: 12,
-    backgroundColor: '#4ade80',
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  headerName: { fontFamily: QS_BOLD, fontSize: 18, fontWeight: '700', color: C.textMain, letterSpacing: -0.2 },
-  headerStatus: { fontSize: 11, color: C.textLight, fontWeight: '600', marginTop: 1 },
+  headerName: { fontFamily: QS_BOLD, fontSize: 18, color: C.textMain, letterSpacing: -0.2 },
 
   /* Match Banner */
   matchBannerContainer: {
@@ -401,7 +739,6 @@ const styles = StyleSheet.create({
   matchBannerTitle: {
     fontFamily: QS_BOLD,
     fontSize: 10,
-    fontWeight: '800',
     color: C.primary,
     letterSpacing: 1.5,
     marginBottom: 6,
@@ -415,7 +752,6 @@ const styles = StyleSheet.create({
   },
   matchBannerDream: {
     fontFamily: SERIF,
-    fontWeight: '700',
     fontStyle: 'italic',
     color: C.textMain,
   },
@@ -453,8 +789,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  bubbleTextMe: { fontFamily: QS_BOLD, color: '#fff', fontSize: 14, fontWeight: '600', lineHeight: 21 },
-  bubbleTextThem: { fontFamily: QS_BOLD, color: C.textMain, fontSize: 14, fontWeight: '600', lineHeight: 21 },
+  bubbleTextMe: { fontFamily: QS_BOLD, color: '#fff', fontSize: 14, lineHeight: 21 },
+  bubbleTextThem: { fontFamily: QS_BOLD, color: C.textMain, fontSize: 14, lineHeight: 21 },
   time: { fontSize: 10, fontWeight: '700', marginTop: 6, color: C.textLight },
   timeMe: { marginRight: 6, textAlign: 'right' },
   timeThem: { marginLeft: 6, textAlign: 'left' },
@@ -493,7 +829,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingHorizontal: 12,
     fontFamily: QS_BOLD,
-    fontWeight: '500',
     fontSize: 14,
     color: C.textMain,
     maxHeight: 120,
@@ -513,5 +848,112 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
+  },
+  /* Options Menu BottomSheet */
+  menuTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: C.textMain,
+    marginBottom: 16,
+    textAlign: 'center',
+    fontFamily: QS_BOLD,
+  },
+  menuOptionsList: {
+    marginTop: 8,
+    gap: 2,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.03)',
+  },
+  menuItemText: {
+    fontFamily: QS_BOLD,
+    fontSize: 15,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  /* Confirmation Drawer */
+  confirmContainer: {
+    paddingTop: 8,
+    alignItems: 'center',
+    width: '100%',
+  },
+  confirmTitle: {
+    fontFamily: QS_BOLD,
+    fontSize: 18,
+    color: C.textMain,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmDesc: {
+    fontSize: 14,
+    color: C.textMuted,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+    paddingHorizontal: 16,
+  },
+  confirmBtnPrimary: {
+    width: '100%',
+    borderRadius: 100,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  confirmBtnPrimaryGradient: {
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  confirmBtnPrimaryText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: QS_BOLD,
+    letterSpacing: 0.5,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  confirmBtnSecondary: {
+    width: '100%',
+    height: 50,
+    borderRadius: 100,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnSecondaryText: {
+    color: C.textMuted,
+    fontSize: 15,
+    fontFamily: QS_BOLD,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  disconnectedFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FAFAFA',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  disconnectedFooterText: {
+    fontFamily: QS_BOLD,
+    fontSize: 13,
+    color: C.textMuted,
+    textAlign: 'center',
+    flex: 1,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });

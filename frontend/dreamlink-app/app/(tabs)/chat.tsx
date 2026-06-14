@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
+import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import React, { useState, useEffect, useCallback } from 'react';
 import wsService from '../../services/websocket';
 import { useAppStore } from '../../store/useAppStore';
@@ -17,13 +18,15 @@ import {
   ScrollView,
   View,
   Alert,
+  StatusBar,
 } from 'react-native';
-import { EdgeToEdgeLayout } from '../../components/EdgeToEdgeLayout';
 import { getMyConversations, deleteConversation, ConversationResponse, formatRelativeTime } from '../../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Constants & Tokens ────────────────────────────────────────────────────────
-const SERIF = Platform.OS === 'ios' ? 'Georgia' : 'serif';
+const SERIF = 'Quicksand_700Bold';
 const QS_BOLD = 'Quicksand_700Bold';
+const QS_MEDIUM = 'Quicksand_500Medium';
 
 const COLORS = {
   primary: '#A63F4F',      // Koyu Rose (Ana Renk)
@@ -68,7 +71,7 @@ const Avatar = ({ url, name, size = 56 }: { url: string | null; name: string; si
       colors={['#F1F5F9', '#E2E8F0']}
       style={{ width: size, height: size, borderRadius: size / 2, justifyContent: 'center', alignItems: 'center' }}
     >
-      <Text style={{ fontSize: size * 0.38, fontWeight: '800', color: COLORS.textMuted }}>
+      <Text style={{ fontSize: size * 0.38, color: COLORS.textMuted }}>
         {name.charAt(0).toUpperCase()}
       </Text>
     </LinearGradient>
@@ -87,54 +90,150 @@ const MOCK_AVATARS = [
   'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
 ];
 
+interface ExtendedConversationResponse extends ConversationResponse {
+  unreadCount?: number;
+  themeMatch?: string;
+  isNewConnection?: boolean;
+  disconnected?: boolean;
+}
+
+const MOCK_CONVERSATIONS: ExtendedConversationResponse[] = [
+  {
+    id: 'conv-1',
+    otherUser: {
+      id: 'user-1',
+      nickname: 'Deren',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    },
+    lastMessage: '',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+    unreadCount: 0,
+    themeMatch: 'Lucid Ocean',
+    isNewConnection: true,
+  },
+  {
+    id: 'conv-2',
+    otherUser: {
+      id: 'user-2',
+      nickname: 'Emre',
+      avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
+    },
+    lastMessage: 'I think our dreams are overlapping. What time did you wake up?',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+    unreadCount: 3,
+  },
+  {
+    id: 'conv-3',
+    otherUser: {
+      id: 'user-3',
+      nickname: 'Melis',
+      avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
+    },
+    lastMessage: 'I wrote down the details. Talk to you tomorrow!',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+    unreadCount: 0,
+  },
+  {
+    id: 'conv-4',
+    otherUser: {
+      id: 'user-4',
+      nickname: 'Zeynep',
+      avatarUrl: 'https://i.pinimg.com/1200x/9c/0e/94/9c0e94cae90d58a5487ab428dd8331ed.jpg',
+    },
+    lastMessage: '',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
+    unreadCount: 0,
+    themeMatch: 'Forest of Doors',
+    isNewConnection: true,
+  },
+  {
+    id: 'conv-5',
+    otherUser: {
+      id: 'user-5',
+      nickname: 'Can',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    },
+    lastMessage: 'Exactly, the physics of it is mind-bending.',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 32).toISOString(),
+    unreadCount: 0,
+    disconnected: true,
+  }
+];
+
 // ─── Chat Card ────────────────────────────────────────────────────────────────
 const ChatCard = ({
   item,
   index,
-  isSelected,
-  onSelect,
   onPress,
-  unreadCount = 0,
 }: {
-  item: ConversationResponse;
+  item: ExtendedConversationResponse;
   index: number;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
   onPress: () => void;
-  unreadCount?: number;
 }) => {
   const avatarUrl = item.otherUser.avatarUrl || MOCK_AVATARS[index % MOCK_AVATARS.length];
+  const unreadCount = item.unreadCount ?? 0;
   const isUnread = unreadCount > 0;
+  const isNew = item.isNewConnection;
 
   return (
     <TouchableOpacity
-      style={[styles.card, isSelected && styles.cardSelected]}
-      activeOpacity={0.75}
-      onLongPress={() => onSelect(item.id)}
-      onPress={() => {
-        if (isSelected) onSelect(item.id);
-        else onPress();
-      }}
+      style={[
+        styles.card,
+        item.disconnected && styles.cardDisconnected
+      ]}
+      activeOpacity={item.disconnected ? 0.85 : 0.75}
+      onPress={onPress}
     >
       {/* Avatar */}
-      <View style={styles.avatarWrap}>
-        <Avatar url={avatarUrl} name={item.otherUser.nickname} size={52} />
+      <View style={[styles.avatarWrap, item.disconnected && { opacity: 0.55 }]}>
+        <Avatar url={avatarUrl} name={item.otherUser.nickname} size={54} />
       </View>
 
       {/* Text */}
       <View style={styles.cardText}>
         <View style={styles.nameRow}>
-          <Text style={[styles.cardName, isUnread && styles.cardNameUnread]} numberOfLines={1}>
-            {item.otherUser.nickname}
-          </Text>
-          <Text style={[styles.cardTime, isUnread && styles.cardTimeUnread]}>
-            {item.lastMessageAt ? formatRelativeTime(item.lastMessageAt) : 'New'}
-          </Text>
+          <View style={{ flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 8 }}>
+            <Text style={[
+              styles.cardName,
+              isUnread && styles.cardNameUnread,
+              isNew && styles.cardNameNew,
+              item.disconnected && styles.cardNameDisconnected
+            ]} numberOfLines={1}>
+              {item.otherUser.nickname}
+            </Text>
+            {isNew && (
+              <View style={styles.newMatchBadge}>
+                <Text style={styles.newMatchBadgeText}>NEW MATCH</Text>
+              </View>
+            )}
+            {item.disconnected && (
+              <View style={styles.endedBadge}>
+                <Text style={styles.endedBadgeText}>CONNECTION ENDED</Text>
+              </View>
+            )}
+          </View>
+          {!isNew && (
+            <Text style={[
+              styles.cardTime,
+              isUnread && styles.cardTimeUnread,
+              item.disconnected && styles.cardTimeDisconnected
+            ]}>
+              {item.lastMessageAt ? formatRelativeTime(item.lastMessageAt) : 'Just now'}
+            </Text>
+          )}
         </View>
+
         <View style={styles.subRow}>
-          <Text style={[styles.cardSub, isUnread && styles.cardSubUnread]} numberOfLines={1}>
-            {item.lastMessage ?? '✨ Chat started'}
-          </Text>
+          {isNew ? (
+            <Text style={styles.cardSubNew} numberOfLines={1}>
+              ✨ Matched on: <Text style={styles.cardThemeMatch}>{item.themeMatch}</Text>
+            </Text>
+          ) : (
+            <Text style={[styles.cardSub, isUnread && styles.cardSubUnread, item.disconnected && styles.cardSubDisconnected]} numberOfLines={1}>
+              {item.disconnected ? 'Connection ended' : (item.lastMessage ?? '✨ Chat started')}
+            </Text>
+          )}
+
           {isUnread && (
             <View style={styles.unreadBubble}>
               <Text style={styles.unreadBubbleText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -146,53 +245,72 @@ const ChatCard = ({
   );
 };
 
-// ─── New Connections (Mocked) ──────────────────────────────────────────────────
-const MockConnections = [
-  { name: 'Elena', img: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80' },
-  { name: 'Marcus', img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80' },
-  { name: 'Sienna', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80' },
-  { name: 'Julian', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80' },
-];
+// ─── Lunar Empty State ────────────────────────────────────────────────────────
+const LunarEmptyState = () => (
+  <View style={styles.lunarEmpty}>
+    <View style={styles.moonGlowContainer}>
+      <Svg width={200} height={200} viewBox="0 0 200 200">
+        <Defs>
+          <RadialGradient id="moonGlow" cx="50%" cy="50%" rx="50%" ry="50%">
+            <Stop offset="0%" stopColor="#A63F4F" stopOpacity={0.28} />
+            <Stop offset="50%" stopColor="#A63F4F" stopOpacity={0.08} />
+            <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
 
-const NewConnections = () => (
-  <View style={styles.connectionsContainer}>
-    <Text style={styles.connectionsTitle}>NEW CONNECTIONS</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.connectionsScroll}>
-      {MockConnections.map((user, idx) => (
-        <View key={idx} style={styles.connectionItem}>
-          <View style={styles.connectionAvatarBorder}>
-            <Image source={{ uri: user.img }} style={styles.connectionAvatar} />
-          </View>
-          <Text style={styles.connectionName}>{user.name}</Text>
-        </View>
-      ))}
-    </ScrollView>
-  </View>
-);
+        {/* Outer ambient glow */}
+        <Circle cx="100" cy="100" r="80" fill="url(#moonGlow)" />
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
-const EmptyState = () => (
-  <View style={styles.empty}>
-    <LinearGradient
-      colors={[COLORS.roseLt, '#FFFFFF']}
-      style={styles.emptyIcon}
-    >
-      <Ionicons name="chatbubbles-outline" size={36} color={COLORS.primary} />
-    </LinearGradient>
-    <Text style={styles.emptyTitle}>No messages yet</Text>
-    <Text style={styles.emptySub}>
-      Like new dreams in Matches, your chats will appear here when you match.
+        {/* Ambient starry sky points */}
+        <Circle cx="50" cy="60" r="1.5" fill="#A63F4F" opacity={0.6} />
+        <Circle cx="155" cy="70" r="1" fill="#A63F4F" opacity={0.4} />
+        <Circle cx="70" cy="140" r="2" fill="#A63F4F" opacity={0.5} />
+        <Circle cx="135" cy="150" r="1.5" fill="#A63F4F" opacity={0.7} />
+        <Circle cx="110" cy="40" r="1.2" fill="#A63F4F" opacity={0.5} />
+        <Circle cx="45" cy="110" r="1" fill="#A63F4F" opacity={0.4} />
+
+        {/* Crescent Moon centered at (100, 100) */}
+        <Path
+          d="M100 60 A 40 40 0 1 0 140 100 A 32 32 0 1 1 100 60 Z"
+          fill="#A63F4F"
+        />
+      </Svg>
+    </View>
+
+    <Text style={styles.lunarTitle}>Silence Under the Moonlight</Text>
+    <Text style={styles.lunarSubtitle}>
+      The night is still. Once your dream cycles align with another traveler, your connection will illuminate this sky.
     </Text>
+
+    <TouchableOpacity
+      style={styles.exploreBtn}
+      activeOpacity={0.85}
+      onPress={() => router.push('/matches')}
+    >
+      <LinearGradient
+        colors={['#A63F4F', '#7D2D3A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.exploreBtnGradient}
+      >
+        <Text style={styles.exploreBtnText}>Seek Connections</Text>
+        <Ionicons name="compass-outline" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+      </LinearGradient>
+    </TouchableOpacity>
   </View>
 );
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ChatScreen() {
+  const insets = useSafeAreaInsets();
   const [conversations, setConversations] = useState<ConversationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+
+  // Display the rich set of mocked conversations to show the diverse, premium designs
+  const displayedConversations: ExtendedConversationResponse[] = MOCK_CONVERSATIONS;
 
   const load = useCallback(async () => {
     try {
@@ -231,75 +349,39 @@ export default function ChatScreen() {
     }, [load, setUnreadMessages])
   );
 
-  const handleDelete = () => {
-    if (!selectedId) return;
-    showConfirm(
-      'Delete Chat',
-      'Are you sure you want to permanently delete this chat and all its messages?',
-      async () => {
-        try {
-          setLoading(true);
-          await deleteConversation(selectedId);
-          setConversations(prev => prev.filter(c => c.id !== selectedId));
-          setSelectedId(null);
-        } catch (error) {
-          showAlert('Error', 'Chat could not be deleted.');
-        } finally {
-          setLoading(false);
-        }
-      },
-      () => setSelectedId(null)
-    );
-  };
-
-  const handleSelect = (id: string) => {
-    if (selectedId === id) {
-      setSelectedId(null); // Deselect
-    } else {
-      setSelectedId(id);   // Select new
-    }
-  };
-
-  const handlePressCard = (item: ConversationResponse) => {
-    if (selectedId) {
-      handleSelect(item.id);
-    } else {
-      router.push({
-        pathname: '/chatbox',
-        params: {
-          conversationId: item.id,
-          name: item.otherUser.nickname,
-          avatar: item.otherUser.avatarUrl || ''
-        }
-      });
-    }
+  const handlePressCard = (item: ExtendedConversationResponse) => {
+    router.push({
+      pathname: '/chatbox',
+      params: {
+        conversationId: item.id,
+        name: item.otherUser.nickname,
+        avatar: item.otherUser.avatarUrl || '',
+        themeMatch: item.themeMatch || '',
+        disconnected: item.disconnected ? 'true' : 'false'
+      }
+    });
   };
 
   if (loading) {
     return (
-      <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
-        <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      </EdgeToEdgeLayout>
+      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
     );
   }
 
   return (
-    <EdgeToEdgeLayout backgroundColor={COLORS.bg} statusBarStyle="dark-content" statusBarBg={COLORS.bg}>
-      <View style={[styles.root]}>
+    <View style={[styles.root]}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
-        {/* Header */}
-        <View style={[styles.header]}>
-          <Text style={styles.headerTitle}>Chats</Text>
-          {selectedId ? (
-            <TouchableOpacity onPress={handleDelete}>
-              <Ionicons name="trash-outline" size={24} color={COLORS.primary} />
-            </TouchableOpacity>
-          ) : <View />}
-        </View>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <Text style={styles.headerTitle}>Chats</Text>
+      </View>
 
-        {/* Editoryal Search Bar */}
+      {/* Editoryal Search Bar */}
+      {displayedConversations.length > 0 && (
         <View style={styles.searchContainer}>
           <View style={styles.searchGlass}>
             <Ionicons name="search" size={18} color={COLORS.textLight} style={{ marginLeft: 16 }} />
@@ -312,35 +394,31 @@ export default function ChatScreen() {
             />
           </View>
         </View>
+      )}
 
-        <FlatList
-          data={conversations}
-          keyExtractor={i => i.id}
-          renderItem={({ item, index }) => (
-            <ChatCard
-              item={item}
-              index={index}
-              isSelected={selectedId === item.id}
-              onSelect={handleSelect}
-              onPress={() => handlePressCard(item)}
-              unreadCount={index === 0 ? 3 : index === 1 ? 1 : 0}
-            />
-          )}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListHeaderComponent={<NewConnections />}
-          ListEmptyComponent={<EmptyState />}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); load(); }}
-              tintColor={COLORS.primary}
-            />
-          }
-        />
-      </View>
-    </EdgeToEdgeLayout>
+      <FlatList
+        data={displayedConversations}
+        keyExtractor={i => i.id}
+        renderItem={({ item, index }) => (
+          <ChatCard
+            item={item}
+            index={index}
+            onPress={() => handlePressCard(item)}
+          />
+        )}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListEmptyComponent={<LunarEmptyState />}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); load(); }}
+            tintColor={COLORS.primary}
+          />
+        }
+      />
+    </View>
   );
 }
 
@@ -359,12 +437,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: COLORS.bg,
   },
-  headerTitle: { 
-    fontFamily: QS_BOLD, 
-    fontSize: 24, 
-    fontWeight: '700', 
-    color: COLORS.textMain, 
-    letterSpacing: -0.4 
+  headerTitle: {
+    fontFamily: QS_BOLD,
+    fontSize: 24,
+    color: COLORS.textMain,
+    letterSpacing: -0.4
   },
 
   searchContainer: {
@@ -393,7 +470,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textMain,
     fontFamily: QS_BOLD,
-    fontWeight: '500',
   },
 
   connectionsContainer: {
@@ -451,37 +527,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 13,
+    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
+    width: '100%',
   },
-  cardSelected: {
-    backgroundColor: COLORS.roseLt,
-  },
+
 
   avatarWrap: {
     marginRight: 16,
   },
 
-  cardText: { flex: 1 },
+  cardText: {
+    flex: 1,
+    flexShrink: 1,
+    width: 0,
+  },
   nameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 3,
+    marginBottom: 7,
+    width: '100%',
   },
   subRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    width: '100%',
   },
   cardName: {
     fontFamily: QS_BOLD,
     fontSize: 15,
-    fontWeight: '600',
     color: COLORS.textMain,
     letterSpacing: -0.1,
-    flex: 1,
-    marginRight: 8,
+    flexShrink: 1,
   },
   cardNameUnread: {
     fontWeight: '800',
@@ -491,6 +570,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textLight,
     fontWeight: '500',
+    flexShrink: 0,
   },
   cardTimeUnread: {
     color: COLORS.primary,
@@ -504,8 +584,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   cardSubUnread: {
-    fontWeight: '600',
-    color: '#334155',
+    fontWeight: '700',
+    color: '#1e293b',
   },
   unreadBubble: {
     minWidth: 20,
@@ -515,36 +595,121 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
+    flexShrink: 0,
   },
   unreadBubbleText: {
     fontFamily: QS_BOLD,
     fontSize: 11,
-    fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.2,
   },
 
-  empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 40 },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
+
+  newMatchBadge: {
+    backgroundColor: '#F8EDEF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    flexShrink: 0,
   },
-  emptyTitle: { 
+  newMatchBadgeText: {
     fontFamily: QS_BOLD,
-    fontSize: 18, 
-    fontWeight: '700', 
-    color: COLORS.textMain, 
-    marginBottom: 8,
-    letterSpacing: -0.2,
+    fontSize: 8,
+    color: COLORS.primary,
+    letterSpacing: 0.5,
   },
-  emptySub: { 
-    fontSize: 13, 
-    color: COLORS.textMuted, 
-    textAlign: 'center', 
-    lineHeight: 20 
+  cardNameNew: {
+    color: COLORS.textMain,
+    fontWeight: '700',
+  },
+  cardSubNew: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    lineHeight: 18,
+    flex: 1,
+    marginRight: 8,
+  },
+  cardThemeMatch: {
+    fontFamily: QS_BOLD,
+    color: COLORS.primary,
+  },
+  cardDisconnected: {
+    backgroundColor: '#FAFAFA',
+    opacity: 0.8,
+  },
+  cardNameDisconnected: {
+    color: '#94A3B8',
+  },
+  cardTimeDisconnected: {
+    color: '#CBD5E1',
+  },
+  cardSubDisconnected: {
+    color: '#94A3B8',
+  },
+  endedBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    flexShrink: 0,
+  },
+  endedBadgeText: {
+    fontFamily: QS_BOLD,
+    fontSize: 8,
+    color: '#64748B',
+    letterSpacing: 0.5,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+
+  lunarEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 36,
+  },
+  moonGlowContainer: {
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lunarTitle: {
+    fontFamily: SERIF,
+    fontSize: 20,
+    color: COLORS.textMain,
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  lunarSubtitle: {
+    fontFamily: QS_MEDIUM,
+    fontSize: 14,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 28,
+    paddingHorizontal: 12,
+  },
+  exploreBtn: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#A63F4F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  exploreBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    paddingHorizontal: 24,
+  },
+  exploreBtnText: {
+    fontFamily: QS_BOLD,
+    color: '#FFFFFF',
+    fontSize: 14,
+    letterSpacing: 0.2,
   },
 });

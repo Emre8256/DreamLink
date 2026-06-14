@@ -13,28 +13,28 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
+import { StatusBar } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { getMyProfile, UserProfileResponse } from '../services/api';
-import { 
-  MapPin, Moon, Ruler, Home, Briefcase, 
-  Cigarette, Wine 
-} from 'lucide-react-native'; 
+import {
+  MapPin, Moon, Ruler, Home, Briefcase,
+  Cigarette, Wine
+} from 'lucide-react-native';
 
 // ─── Design Tokens (Bumble Soft UI) ───────────────────────────────────────────
-const QS_BOLD   = 'Quicksand_700Bold';
+const QS_BOLD = 'Quicksand_700Bold';
 const QS_MEDIUM = 'Quicksand_500Medium';
 const QS_SEMIBOLD = 'Quicksand_600SemiBold';
 const QS_REGULAR = 'Quicksand_400Regular';
-const SERIF = Platform.OS === 'ios' ? 'Georgia' : 'serif';
+const SERIF = 'Quicksand_700Bold';
 
 const C = {
-  primary:     '#A63F4F',
-  pageBg:      '#FFFFFF', 
-  bg:          '#FFFFFF',
-  textMain:    '#000000', 
-  textMuted:   '#111111', 
-  textLight:   '#94a3b8',
+  primary: '#A63F4F',
+  pageBg: '#FFFFFF',
+  bg: '#FFFFFF',
+  textMain: '#000000',
+  textMuted: '#111111',
+  textLight: '#94a3b8',
   borderLight: 'rgba(0,0,0,0.04)',
 };
 
@@ -66,40 +66,39 @@ const MOCK_EXTRA_DATA = {
 export default function ProfilePreviewScreen() {
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
-  const [loading, setLoading]  = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getMyProfile()
       .then(data => setProfile(data))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
-      <EdgeToEdgeLayout backgroundColor={C.pageBg} statusBarStyle="dark-content" statusBarBg={C.pageBg}>
-        <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
-          <Stack.Screen options={{ headerShown: false }} />
-          <ActivityIndicator size="large" color={C.primary} />
-        </View>
-      </EdgeToEdgeLayout>
+      <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={C.pageBg} />
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" color={C.primary} />
+      </View>
     );
   }
 
   // Eğer profil API'den gelmediyse Mock verilerle dolu dolu göster
-  const name       = profile?.nickname   || 'Elara';
-  const age        = profile?.age        || 26;
-  const location   = profile?.location   || 'Istanbul';
-  const bio        = profile?.bio        || 'Exploring the boundary between reality and imagination. I cannot go a day without architecture, film, and espresso.';
-  const photos     = profile?.photos?.length ? profile.photos : MOCK_EXTRA_DATA.photos;
+  const name = profile?.nickname || 'Elara';
+  const age = profile?.age || 26;
+  const location = profile?.location || 'Istanbul';
+  const bio = profile?.bio || 'Exploring the boundary between reality and imagination. I cannot go a day without architecture, film, and espresso.';
+  const photos = profile?.photos?.length ? profile.photos : MOCK_EXTRA_DATA.photos;
 
   return (
-    <EdgeToEdgeLayout backgroundColor={C.pageBg} statusBarStyle="dark-content" statusBarBg={C.pageBg}>
-      <View style={s.root}>
-        <Stack.Screen options={{ headerShown: false }} />
+    <View style={s.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.pageBg} />
+      <Stack.Screen options={{ headerShown: false }} />
 
-        {/* ─── Header ─── */}
-        <View style={[s.header, { paddingTop: 10 }]}>
+      {/* ─── Header ─── */}
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity style={s.closeBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <Ionicons name="close" size={22} color={C.textMain} />
         </TouchableOpacity>
@@ -253,8 +252,7 @@ export default function ProfilePreviewScreen() {
         </TouchableOpacity>
       </View>
 
-      </View>
-    </EdgeToEdgeLayout>
+    </View>
   );
 }
 
@@ -276,7 +274,7 @@ const s = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6', 
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -311,11 +309,11 @@ const s = StyleSheet.create({
   },
 
   // Hero Image (3:4 Oranına Sabitlendi)
-  heroWrap: { 
-    width: '100%', 
+  heroWrap: {
+    width: '100%',
     aspectRatio: 3 / 4, // Discover kartı ile birebir uyumlu oran
-    position: 'relative', 
-    overflow: 'hidden' 
+    position: 'relative',
+    overflow: 'hidden'
   },
   heroImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   heroGradient: {
@@ -336,7 +334,6 @@ const s = StyleSheet.create({
   heroName: {
     fontFamily: SERIF,
     fontSize: 28,
-    fontWeight: '700',
     fontStyle: 'italic',
     color: '#fff',
     letterSpacing: -0.3,
@@ -381,7 +378,6 @@ const s = StyleSheet.create({
   bumbleCardTitle: {
     fontFamily: QS_BOLD,
     fontSize: 16,
-    fontWeight: '700',
     color: '#000000',
     marginBottom: 14,
   },
@@ -410,39 +406,39 @@ const s = StyleSheet.create({
   },
 
   // Prompt Cards
-  promptCard: { 
-    backgroundColor: '#FFFFFF', 
-    padding: 18, 
-    borderRadius: 20, 
-    marginBottom: 16, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.05, 
-    shadowRadius: 15, 
-    elevation: 4 
+  promptCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 18,
+    borderRadius: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 4
   },
   promptQuestion: { fontFamily: QS_SEMIBOLD, fontSize: 15, fontWeight: '600', color: C.textMain, marginBottom: 10, lineHeight: 22 },
   promptDivider: { height: 1.6, backgroundColor: C.borderLight, marginHorizontal: 4, marginBottom: 10 },
   promptAnswer: { fontFamily: QS_MEDIUM, fontSize: 15, color: '#111111', lineHeight: 22, marginBottom: 4 },
 
   // Extra Photos (3:4 Oranı)
-  extraPhotoContainer: { 
-    width: '100%', 
-    borderRadius: 20, 
-    overflow: 'hidden', 
-    backgroundColor: C.bg, 
+  extraPhotoContainer: {
+    width: '100%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: C.bg,
     marginBottom: 16,
-    aspectRatio: 3 / 4, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.05, 
-    shadowRadius: 15, 
+    aspectRatio: 3 / 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
     elevation: 4
   },
-  extraPhoto: { 
-    width: '100%', 
-    height: '100%', 
-    resizeMode: 'cover' 
+  extraPhoto: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover'
   },
 
   // CTA Bar
@@ -479,7 +475,6 @@ const s = StyleSheet.create({
   editBtnText: {
     fontFamily: QS_BOLD,
     fontSize: 16,
-    fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.4,
   },

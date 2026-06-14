@@ -189,6 +189,7 @@ export interface DreamInterpretationResponse {
   dreamId: string;
   persona: DreamInterpretPersona;
   content: string;
+  advancedContent?: string;
   zodiacSign: string;
   createdAt: string;
 }

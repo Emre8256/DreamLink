@@ -5,6 +5,7 @@
     "expo": "^55.0.12",
     "expo-blur": "~55.0.14",
     "expo-image-picker": "^55.0.18",
+    "react-native-svg": "15.15.3",
     "sockjs-client": "^1.6.1",
     "zustand": "^5.0.11"
   },

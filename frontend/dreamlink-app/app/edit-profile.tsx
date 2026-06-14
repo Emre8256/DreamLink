@@ -1,19 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Animated,
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
-  Image, Modal, Pressable
+  Image, Modal, BackHandler
 } from 'react-native';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import * as ImagePicker from 'expo-image-picker';
+import WheelPicker from '@quidone/react-native-wheel-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EdgeToEdgeLayout } from '../components/EdgeToEdgeLayout';
+import { StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AnimatedPressable } from '../components/AnimatedPressable';
 import {
   User, Calendar, Ruler, Home, MapPin, GraduationCap,
-  Moon, Cigarette, Wine
+  Moon, Cigarette, Wine, CircleUser, Languages
 } from 'lucide-react-native';
 
 // ─── Design Tokens (Bumble & Premium Soft UI) ───────────────
@@ -21,14 +23,14 @@ const QS_BOLD = 'Quicksand_700Bold';
 const QS_MEDIUM = 'Quicksand_500Medium';
 
 const C = {
-  primary: '#A63F4F',      
-  roseLt: '#F7E6E8',       
-  roseMd: '#D697A2',       
-  bg: '#FFFFFF',           
-  sand: '#F8FAFC',         
+  primary: '#A63F4F',
+  roseLt: '#F7E6E8',
+  roseMd: '#D697A2',
+  bg: '#FFFFFF',
+  sand: '#F8FAFC',
   textMain: '#000000',     // Belirgin Siyah (Bumble Style)
   textMuted: '#111111',    // Tok Koyu Gri/Siyah
-  textLight: '#94a3b8',    
+  textLight: '#94a3b8',
   borderLight: 'rgba(0,0,0,0.06)',
 };
 
@@ -79,31 +81,27 @@ const RICH_INTERESTS = [
 ];
 
 // ─── Height Data ───
-const cmData = Array.from({ length: 101 }, (_, i) => (i + 130).toString());
-const ftData = [
-  "4'0\"", "4'1\"", "4'2\"", "4'3\"", "4'4\"", "4'5\"", "4'6\"", "4'7\"", "4'8\"", "4'9\"", "4'10\"", "4'11\"",
-  "5'0\"", "5'1\"", "5'2\"", "5'3\"", "5'4\"", "5'5\"", "5'6\"", "5'7\"", "5'8\"", "5'9\"", "5'10\"", "5'11\"",
-  "6'0\"", "6'1\"", "6'2\"", "6'3\"", "6'4\"", "6'5\"", "6'6\"", "6'7\"", "6'8\"", "6'9\"", "6'10\"", "6'11\"", "7'0\""
-];
+const HEIGHTS = Array.from({ length: 91 }, (_, index) => {
+  const value = 140 + index;
+  let label = `${value} cm`;
+  if (value === 140) {
+    label = 'Under 140 cm';
+  } else if (value === 230) {
+    label = '230+ cm';
+  }
+  return { value, label };
+});
 
-const ITEM_H = 56;
-const PICKER_H = ITEM_H * 5;
-
-function cmToFtIdx(cmIdx: number): number {
-  const totalIn = Math.round((cmIdx + 130) / 2.54);
-  const ft = Math.floor(totalIn / 12);
-  const inch = totalIn % 12;
-  const target = `${ft}'${inch}"`;
-  const idx = ftData.indexOf(target);
-  return idx >= 0 ? idx : 22;
-}
-
-function ftToCmIdx(ftIdx: number): number {
-  const m = ftData[ftIdx]?.match(/(\d+)'(\d+)"/);
-  if (!m) return 52;
-  const totalIn = parseInt(m[1]) * 12 + parseInt(m[2]);
-  return Math.max(0, Math.min(100, Math.round(totalIn * 2.54) - 130));
-}
+const parseHeightStringToNumber = (hStr: string): number => {
+  if (!hStr) return 170;
+  if (hStr.includes('Under 140')) return 140;
+  if (hStr.includes('230+')) return 230;
+  const match = hStr.match(/(\d+)/);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  return 170;
+};
 
 // ─── Main Screen ──────────────────────────────────────────────
 export default function EditProfileScreen() {
@@ -114,7 +112,7 @@ export default function EditProfileScreen() {
     'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80',
     null, null, null
   ]);
-  
+
   // Text Fields
   const [nickname, setNickname] = useState('Alex');
   const [bio, setBio] = useState('Exploring the boundary between reality and imagination...');
@@ -124,20 +122,17 @@ export default function EditProfileScreen() {
   // Read-only Identity Info
   const age = 28;
   const zodiac = 'Scorpio ♏';
-  const gender = 'Male'; 
-  
+  const gender = 'Male';
+
   // Height State
   const [height, setHeight] = useState('182 cm');
   const [heightModalVisible, setHeightModalVisible] = useState(false);
-  const [heightUnit, setHeightUnit] = useState<'cm' | 'ft'>('cm');
-  const [pickerCmIdx, setPickerCmIdx] = useState(52);
-  const [pickerFtIdx, setPickerFtIdx] = useState(23);
-  const wheelRef = useRef<ScrollView>(null);
-  const wheelScrollY = useRef(new Animated.Value(52 * ITEM_H)).current;
-  const onWheelScroll = useRef(Animated.event(
-    [{ nativeEvent: { contentOffset: { y: wheelScrollY } } }],
-    { useNativeDriver: false }
-  )).current;
+  const [pickerHeight, setPickerHeight] = useState<number>(182);
+
+  const openHeightModal = () => {
+    setPickerHeight(parseHeightStringToNumber(height));
+    setHeightModalVisible(true);
+  };
 
   // Selects & Arrays
   const [education, setEducation] = useState('Bachelor');
@@ -151,25 +146,25 @@ export default function EditProfileScreen() {
   const [languageSearch, setLanguageSearch] = useState('');
 
   // Prompts
-  const [prompts, setPrompts] = useState<{question: string, answer: string}[]>([
+  const [prompts, setPrompts] = useState<{ question: string, answer: string }[]>([
     { question: "The one dream I'd like to live again...", answer: "That moment gliding through the sky, watching the whole city unfold." }
   ]);
 
   // ── Modals & UI States ──
-  const sheetAnim = useRef(new Animated.Value(0)).current;
-  const [sheetConfig, setSheetConfig] = useState<{visible: boolean, title: string, type: 'edu'|'chrono'|'smoking'|'alcohol', data: any[], selected: string}>({
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const [sheetConfig, setSheetConfig] = useState<{ visible: boolean, title: string, type: 'edu' | 'chrono' | 'smoking' | 'alcohol', data: any[], selected: string }>({
     visible: false, title: '', type: 'edu', data: [], selected: ''
   });
 
   const [interestModalVisible, setInterestModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
-  
-  const [promptManagerVisible, setPromptManagerVisible] = useState(false); 
-  const [promptEditorVisible, setPromptEditorVisible] = useState(false);   
-  const [activePromptIndex, setActivePromptIndex] = useState<number | null>(null); 
+
+  const [promptManagerVisible, setPromptManagerVisible] = useState(false);
+  const [promptEditorVisible, setPromptEditorVisible] = useState(false);
+  const [activePromptIndex, setActivePromptIndex] = useState<number | null>(null);
   const [draftQuestion, setDraftQuestion] = useState<string | null>(null);
   const [draftAnswer, setDraftAnswer] = useState<string>('');
-  
+
   const [textEditConfig, setTextEditConfig] = useState<{
     visible: boolean; title: string; desc: string; value: string;
     field: 'nickname' | 'bio' | 'hometown' | 'location' | null;
@@ -177,47 +172,65 @@ export default function EditProfileScreen() {
   }>({ visible: false, title: '', desc: '', value: '', field: null, maxLength: 50, multiline: false, keyboardType: 'default' });
 
   // ── Functions ──
-  const openSheet = (title: string, type: 'edu'|'chrono'|'smoking'|'alcohol', data: any[], selected: string) => {
+  const openSheet = (title: string, type: 'edu' | 'chrono' | 'smoking' | 'alcohol', data: any[], selected: string) => {
     setSheetConfig({ visible: true, title, type, data, selected });
-    Animated.timing(sheetAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
-  };
-
-  const closeSheet = () => {
-    Animated.timing(sheetAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
-      setSheetConfig(prev => ({ ...prev, visible: false }));
+    requestAnimationFrame(() => {
+      bottomSheetRef.current?.expand();
     });
   };
 
-  // Height wheel helpers
-  useEffect(() => {
-    if (!heightModalVisible) return;
-    const idx = heightUnit === 'cm' ? pickerCmIdx : pickerFtIdx;
-    const offset = idx * ITEM_H;
-    const timer = setTimeout(() => {
-      wheelScrollY.setValue(offset);
-      wheelRef.current?.scrollTo({ y: offset, animated: false });
-    }, 80);
-    return () => clearTimeout(timer);
-  }, [heightModalVisible, heightUnit]);
-
-  const handleUnitToggle = (unit: 'cm' | 'ft') => {
-    if (unit === heightUnit) return;
-    const newIdx = unit === 'ft' ? cmToFtIdx(pickerCmIdx) : ftToCmIdx(pickerFtIdx);
-    const offset = newIdx * ITEM_H;
-    wheelScrollY.setValue(offset);
-    if (unit === 'ft') setPickerFtIdx(newIdx);
-    else setPickerCmIdx(newIdx);
-    setHeightUnit(unit);
-    setTimeout(() => {
-      wheelRef.current?.scrollTo({ y: offset, animated: false });
-    }, 20);
+  const closeSheet = () => {
+    bottomSheetRef.current?.close();
   };
 
+  const handleSheetChanges = useCallback((index: number) => {
+    if (index === -1) {
+      setSheetConfig(prev => ({ ...prev, visible: false }));
+    }
+  }, []);
+
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        pressBehavior="close"
+        opacity={0.4}
+      />
+    ),
+    []
+  );
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (sheetConfig.visible) {
+        closeSheet();
+        return true;
+      }
+      return false;
+    };
+
+    let backHandler: any;
+    if (sheetConfig.visible) {
+      backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    }
+
+    return () => {
+      if (backHandler) {
+        backHandler.remove();
+      }
+    };
+  }, [sheetConfig.visible]);
+
   const saveHeightSelection = () => {
-    const val = heightUnit === 'cm'
-      ? `${pickerCmIdx + 130} cm`
-      : ftData[pickerFtIdx];
-    setHeight(val);
+    let label = `${pickerHeight} cm`;
+    if (pickerHeight === 140) {
+      label = 'Under 140 cm';
+    } else if (pickerHeight === 230) {
+      label = '230+ cm';
+    }
+    setHeight(label);
     setHeightModalVisible(false);
   };
 
@@ -306,7 +319,7 @@ export default function EditProfileScreen() {
 
   const openTextEditor = (field: 'nickname' | 'bio' | 'hometown' | 'location') => {
     let config = { visible: true, field, title: '', desc: '', value: '', maxLength: 50, multiline: false, keyboardType: 'default' as const };
-    switch(field) {
+    switch (field) {
       case 'nickname': config = { ...config, title: 'Your Name', desc: 'The name that appears on your profile.', value: nickname, maxLength: 30 }; break;
       case 'bio': config = { ...config, title: 'About me', desc: 'Express yourself freely.', value: bio, maxLength: 250, multiline: true }; break;
       case 'hometown': config = { ...config, title: 'Hometown', desc: 'Where are you from?', value: hometown, maxLength: 40 }; break;
@@ -317,7 +330,7 @@ export default function EditProfileScreen() {
 
   const saveTextEdit = () => {
     const val = textEditConfig.value.trim();
-    switch(textEditConfig.field) {
+    switch (textEditConfig.field) {
       case 'nickname': setNickname(val); break;
       case 'bio': setBio(val); break;
       case 'hometown': setHometown(val); break;
@@ -327,11 +340,11 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <EdgeToEdgeLayout backgroundColor={C.bg} statusBarStyle="dark-content" statusBarBg={C.bg}>
-      <View style={s.screen}>
+    <View style={s.screen}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
-        {/* ── HEADER ── */}
-        <View style={[s.header]}>
+      {/* ── HEADER ── */}
+      <View style={[s.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn}>
           <Ionicons name="arrow-back" size={26} color={C.textMain} />
         </TouchableOpacity>
@@ -375,6 +388,14 @@ export default function EditProfileScreen() {
               </View>
               <Text style={s.rowValueReadOnly}>{age}, {zodiac}</Text>
             </View>
+            <View style={s.divider} />
+            <View style={s.cardRow}>
+              <View style={s.rowLabelWrap}>
+                <CircleUser size={18} color="#111111" />
+                <Text style={s.rowLabel}>Gender</Text>
+              </View>
+              <Text style={s.rowValueReadOnly}>{gender}</Text>
+            </View>
           </View>
         </View>
 
@@ -382,10 +403,10 @@ export default function EditProfileScreen() {
         <View style={s.section}>
           <Text style={s.sectionLabel}>About me</Text>
           <TouchableOpacity style={s.bioCard} onPress={() => openTextEditor('bio')}>
-             <Text style={bio ? s.bioText : s.bioTextEmpty} numberOfLines={4}>
-               {bio || 'Write what\'s on your mind...'}
-             </Text>
-             <Ionicons name="create-outline" size={18} color={C.textLight} style={s.bioEditIcon} />
+            <Text style={bio ? s.bioText : s.bioTextEmpty} numberOfLines={4}>
+              {bio || 'Write what\'s on your mind...'}
+            </Text>
+            <Ionicons name="create-outline" size={18} color={C.textLight} style={s.bioEditIcon} />
           </TouchableOpacity>
         </View>
 
@@ -393,7 +414,7 @@ export default function EditProfileScreen() {
         <View style={s.section}>
           <Text style={s.sectionLabel}>Basic info</Text>
           <View style={s.cardGroup}>
-            <TouchableOpacity style={s.cardRow} onPress={() => setHeightModalVisible(true)}>
+            <TouchableOpacity style={s.cardRow} onPress={openHeightModal}>
               <View style={s.rowLabelWrap}>
                 <Ruler size={18} color="#111111" />
                 <Text style={s.rowLabel}>Height</Text>
@@ -443,13 +464,13 @@ export default function EditProfileScreen() {
               </View>
             </TouchableOpacity>
             <View style={s.divider} />
-            <TouchableOpacity style={s.cardRow} onPress={() => openSheet('Sleep Chronotype', 'chrono', CHRONOTYPE_OPTIONS.map(o=>o.value), chronotype)}>
+            <TouchableOpacity style={s.cardRow} onPress={() => openSheet('Sleep Chronotype', 'chrono', CHRONOTYPE_OPTIONS.map(o => o.value), chronotype)}>
               <View style={s.rowLabelWrap}>
                 <Moon size={18} color="#111111" />
                 <Text style={s.rowLabel}>Sleep Chronotype</Text>
               </View>
               <View style={s.rowRight}>
-                <Text style={chronotype ? s.rowValue : s.rowValueEmpty}>{CHRONOTYPE_OPTIONS.find(o=>o.value===chronotype)?.label || 'Select'}</Text>
+                <Text style={chronotype ? s.rowValue : s.rowValueEmpty}>{CHRONOTYPE_OPTIONS.find(o => o.value === chronotype)?.label || 'Select'}</Text>
                 <Ionicons name="chevron-forward" size={16} color={C.textLight} />
               </View>
             </TouchableOpacity>
@@ -466,7 +487,7 @@ export default function EditProfileScreen() {
             </TouchableOpacity>
             <View style={s.divider} />
             <TouchableOpacity style={s.cardRow} onPress={() => openSheet('Alcohol', 'alcohol', ALCOHOL_OPTIONS, alcohol)}>
-               <View style={s.rowLabelWrap}>
+              <View style={s.rowLabelWrap}>
                 <Wine size={18} color="#111111" />
                 <Text style={s.rowLabel}>Alcohol</Text>
               </View>
@@ -484,7 +505,10 @@ export default function EditProfileScreen() {
           <View style={s.interestsCard}>
             <View style={s.pillsWrap}>
               {languages.map(item => (
-                <View key={item} style={s.pillActive}><Text style={s.pillActiveText}>{item}</Text></View>
+                <View key={item} style={s.pillActive}>
+                  <Languages size={14} color="#000000" style={{ marginRight: 6 }} />
+                  <Text style={s.pillActiveText}>{item}</Text>
+                </View>
               ))}
             </View>
             <TouchableOpacity style={s.editTagsBtn} onPress={() => setLanguageModalVisible(true)}>
@@ -522,8 +546,8 @@ export default function EditProfileScreen() {
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={s.promptManageBtn} onPress={() => setPromptManagerVisible(true)}>
-               <Ionicons name="albums-outline" size={18} color={C.textMuted} style={{marginRight: 6}}/>
-               <Text style={s.promptManageBtnText}>Manage Questions</Text>
+              <Ionicons name="albums-outline" size={18} color={C.textMuted} style={{ marginRight: 6 }} />
+              <Text style={s.promptManageBtnText}>Manage Questions</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -550,63 +574,23 @@ export default function EditProfileScreen() {
           </View>
 
           {/* Wheel */}
-          <View style={s.wheelOuter}>
-            {/* Selection highlight band */}
-            <View style={s.wheelHighlight} pointerEvents="none" />
-
-            <ScrollView
-              ref={wheelRef}
-              showsVerticalScrollIndicator={false}
-              snapToInterval={ITEM_H}
-              decelerationRate="fast"
-              contentContainerStyle={{ paddingVertical: ITEM_H * 2 }}
-              scrollEventThrottle={16}
-              onScroll={onWheelScroll}
-              onMomentumScrollEnd={(e) => {
-                const data = heightUnit === 'cm' ? cmData : ftData;
-                const idx = Math.max(0, Math.min(data.length - 1, Math.round(e.nativeEvent.contentOffset.y / ITEM_H)));
-                if (heightUnit === 'cm') setPickerCmIdx(idx);
-                else setPickerFtIdx(idx);
-              }}
-              onScrollEndDrag={(e) => {
-                const data = heightUnit === 'cm' ? cmData : ftData;
-                const idx = Math.max(0, Math.min(data.length - 1, Math.round(e.nativeEvent.contentOffset.y / ITEM_H)));
-                if (heightUnit === 'cm') setPickerCmIdx(idx);
-                else setPickerFtIdx(idx);
-              }}
-            >
-              {(heightUnit === 'cm' ? cmData : ftData).map((val, idx) => {
-                const iRange = [
-                  (idx - 2) * ITEM_H, (idx - 1) * ITEM_H, idx * ITEM_H,
-                  (idx + 1) * ITEM_H, (idx + 2) * ITEM_H,
-                ];
-                const opacity = wheelScrollY.interpolate({
-                  inputRange: iRange, outputRange: [0.12, 0.4, 1, 0.4, 0.12], extrapolate: 'clamp',
-                });
-                const scale = wheelScrollY.interpolate({
-                  inputRange: iRange, outputRange: [0.72, 0.86, 1, 0.86, 0.72], extrapolate: 'clamp',
-                });
-                return (
-                  <Animated.View key={val} style={[s.wheelItem, { opacity, transform: [{ scale }] }]}>
-                    <Text style={s.wheelItemText}>
-                      {heightUnit === 'cm' ? `${val} cm` : val}
-                    </Text>
-                  </Animated.View>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* cm / ft Toggle */}
-          <View style={s.toggleContainer}>
-            <View style={s.toggleBg}>
-              <TouchableOpacity style={[s.toggleBtn, heightUnit === 'cm' && s.toggleBtnActive]} onPress={() => handleUnitToggle('cm')}>
-                <Text style={[s.toggleBtnText, heightUnit === 'cm' && s.toggleBtnTextActive]}>cm</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.toggleBtn, heightUnit === 'ft' && s.toggleBtnActive]} onPress={() => handleUnitToggle('ft')}>
-                <Text style={[s.toggleBtnText, heightUnit === 'ft' && s.toggleBtnTextActive]}>ft</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={s.heightPickerWrapper}>
+            <WheelPicker
+              data={HEIGHTS}
+              value={pickerHeight}
+              onValueChanged={({ item: { value } }) => setPickerHeight(value)}
+              visibleItemCount={7}
+              itemHeight={64}
+              enableScrollByTapOnItem
+              style={s.wheelPicker}
+              itemTextStyle={s.wheelItemText}
+              overlayItemStyle={s.wheelOverlayItem}
+              renderOverlay={() => (
+                <View pointerEvents="none" style={s.wheelSelectorContainer}>
+                  <View style={s.wheelSelector} />
+                </View>
+              )}
+            />
           </View>
 
           {/* Save */}
@@ -620,57 +604,84 @@ export default function EditProfileScreen() {
       </Modal>
 
       {/* ── BOTTOM SHEET (Education, Chronotype, Smoking, Alcohol) ── */}
-      <Modal visible={sheetConfig.visible} transparent animationType="none" onRequestClose={closeSheet}>
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)', opacity: sheetAnim }]}>
-          <Pressable style={{ flex: 1 }} onPress={closeSheet} />
-        </Animated.View>
-        <Animated.View style={[ s.bottomSheet, { paddingBottom: insets.bottom + 20, transform: [{ translateY: sheetAnim.interpolate({ inputRange: [0, 1], outputRange: [500, 0] }) }] } ]}>
-          <View style={s.sheetHandle} />
-          <Text style={s.sheetTitle}>{sheetConfig.title}</Text>
-          <ScrollView bounces={false}>
-            {sheetConfig.data.map(opt => (
-              <TouchableOpacity key={opt} style={s.sheetOption} onPress={() => handleSheetSelect(opt)}>
-                <Text style={[s.sheetOptionText, sheetConfig.selected === opt && s.sheetOptionTextActive]}>
-                  {sheetConfig.type === 'chrono' ? CHRONOTYPE_OPTIONS.find(c=>c.value===opt)?.label : opt}
-                </Text>
-                {sheetConfig.selected === opt && <Ionicons name="checkmark-circle" size={20} color={C.primary} />}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </Animated.View>
-      </Modal>
+      <View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]} pointerEvents={sheetConfig.visible ? 'box-none' : 'none'}>
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={-1}
+          enableDynamicSizing={true}
+          enablePanDownToClose={true}
+          enableContentPanningGesture={false}
+          onChange={handleSheetChanges}
+          backdropComponent={renderBackdrop}
+          backgroundStyle={{ backgroundColor: '#FFFFFF', borderRadius: 28 }}
+          handleIndicatorStyle={{ backgroundColor: '#E2E8F0', width: 40 }}
+        >
+          <BottomSheetView style={{ paddingBottom: insets.bottom + 16, paddingHorizontal: 24, paddingTop: 12 }}>
+            <Text style={s.sheetTitleText}>{sheetConfig.title}</Text>
+            <View style={{ gap: 4 }}>
+              {sheetConfig.data.map(opt => (
+                <TouchableOpacity
+                  key={opt}
+                  style={[
+                    s.optionCard,
+                    sheetConfig.selected === opt && s.optionCardActive
+                  ]}
+                  onPress={() => handleSheetSelect(opt)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      s.optionCardText,
+                      sheetConfig.selected === opt && s.optionCardTextActive
+                    ]}
+                  >
+                    {sheetConfig.type === 'chrono'
+                      ? CHRONOTYPE_OPTIONS.find(c => c.value === opt)?.label
+                      : opt}
+                  </Text>
+                  {sheetConfig.selected === opt ? (
+                    <Ionicons name="checkmark-circle" size={22} color={C.primary} />
+                  ) : (
+                    <View style={s.optionCircleEmpty} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </BottomSheetView>
+        </BottomSheet>
+      </View>
 
       {/* ── TEXT EDIT MODAL ── */}
-      <Modal visible={textEditConfig.visible} animationType="slide" presentationStyle="formSheet" onRequestClose={() => setTextEditConfig({...textEditConfig, visible: false})}>
+      <Modal visible={textEditConfig.visible} animationType="slide" presentationStyle="formSheet" onRequestClose={() => setTextEditConfig({ ...textEditConfig, visible: false })}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.modalRoot}>
           <View style={[s.modalHeader, { paddingTop: Platform.OS === 'ios' ? 20 : insets.top }]}>
-             <TouchableOpacity onPress={() => setTextEditConfig({...textEditConfig, visible: false})} style={{padding: 8, marginLeft: -8}}>
-                <Ionicons name="chevron-back" size={28} color={C.textMain} />
-             </TouchableOpacity>
-             <Text style={s.modalTitle}>{textEditConfig.title}</Text>
-             <View style={{width: 40}} />
+            <TouchableOpacity onPress={() => setTextEditConfig({ ...textEditConfig, visible: false })} style={{ padding: 8, marginLeft: -8 }}>
+              <Ionicons name="chevron-back" size={28} color={C.textMain} />
+            </TouchableOpacity>
+            <Text style={s.modalTitle}>{textEditConfig.title}</Text>
+            <View style={{ width: 40 }} />
           </View>
           <ScrollView style={{ padding: 20 }}>
             <Text style={s.textEditDesc}>{textEditConfig.desc}</Text>
             <View style={[s.textEditInputContainer, textEditConfig.multiline && { minHeight: 120 }]}>
-               <TextInput
-                 style={[s.textEditInput, textEditConfig.multiline && s.textEditInputMultiline]}
-                 autoFocus
-                 value={textEditConfig.value}
-                 onChangeText={(t) => setTextEditConfig({...textEditConfig, value: t})}
-                 maxLength={textEditConfig.maxLength}
-                 multiline={textEditConfig.multiline}
-                 keyboardType={textEditConfig.keyboardType}
-                 placeholder="Type here..."
-                 placeholderTextColor={C.textLight}
-               />
-               <Text style={s.textEditCounter}>{textEditConfig.value.length}/{textEditConfig.maxLength}</Text>
+              <TextInput
+                style={[s.textEditInput, textEditConfig.multiline && s.textEditInputMultiline]}
+                autoFocus
+                value={textEditConfig.value}
+                onChangeText={(t) => setTextEditConfig({ ...textEditConfig, value: t })}
+                maxLength={textEditConfig.maxLength}
+                multiline={textEditConfig.multiline}
+                keyboardType={textEditConfig.keyboardType}
+                placeholder="Type here..."
+                placeholderTextColor={C.textLight}
+              />
+              <Text style={s.textEditCounter}>{textEditConfig.value.length}/{textEditConfig.maxLength}</Text>
             </View>
           </ScrollView>
           <View style={[s.fixedBottomBar, { paddingBottom: insets.bottom + 20 }]}>
-             <AnimatedPressable style={s.saveBtnBig} onPress={saveTextEdit} hapticType="medium">
-               <Text style={s.saveBtnBigText}>Save</Text>
-             </AnimatedPressable>
+            <AnimatedPressable style={s.saveBtnBig} onPress={saveTextEdit} hapticType="medium">
+              <Text style={s.saveBtnBigText}>Save</Text>
+            </AnimatedPressable>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -681,7 +692,7 @@ export default function EditProfileScreen() {
           <View style={s.modalHeader}>
             <TouchableOpacity onPress={() => setInterestModalVisible(false)}><Text style={s.modalActionText}>Cancel</Text></TouchableOpacity>
             <Text style={s.modalTitle}>Interests ({draftInterests.length}/5)</Text>
-            <View style={{width: 50}} />
+            <View style={{ width: 50 }} />
           </View>
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
             {RICH_INTERESTS.map((cat, i) => (
@@ -701,62 +712,62 @@ export default function EditProfileScreen() {
             ))}
           </ScrollView>
           <View style={[s.fixedBottomBar, { paddingBottom: insets.bottom + 20 }]}>
-             <AnimatedPressable style={s.saveBtnBig} onPress={saveInterests} hapticType="medium">
-               <Text style={s.saveBtnBigText}>Save Selections</Text>
-             </AnimatedPressable>
+            <AnimatedPressable style={s.saveBtnBig} onPress={saveInterests} hapticType="medium">
+              <Text style={s.saveBtnBigText}>Save Selections</Text>
+            </AnimatedPressable>
           </View>
         </View>
       </Modal>
 
-{/* ── LANGUAGES MODAL ── */}
-<Modal visible={languageModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setLanguageModalVisible(false); setLanguageSearch(''); }}>
-  <View style={[s.modalRoot, { paddingTop: Platform.OS === 'ios' ? 20 : insets.top }]}>
-    <View style={s.modalHeader}>
-      <TouchableOpacity onPress={() => { setLanguageModalVisible(false); setLanguageSearch(''); }}><Text style={s.modalActionText}>Close</Text></TouchableOpacity>
-      <Text style={s.modalTitle}>Languages I Speak</Text>
-      <View style={{width: 50}} />
-    </View>
-    <View style={s.searchInputContainer}>
-      <Ionicons name="search" size={18} color={C.textLight} />
-      <TextInput
-        style={s.searchInput}
-        placeholder="Search languages..."
-        placeholderTextColor={C.textLight}
-        value={languageSearch}
-        onChangeText={setLanguageSearch}
-      />
-      {languageSearch.length > 0 && (
-        <TouchableOpacity onPress={() => setLanguageSearch('')}>
-          <Ionicons name="close-circle" size={18} color={C.textLight} />
-        </TouchableOpacity>
-      )}
-    </View>
-    <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-      <View style={s.pillsWrap}>
-        {AVAILABLE_LANGUAGES
-          .filter(lang => lang.toLowerCase().includes(languageSearch.toLowerCase()))
-          .map(item => {
-          const isSelected = languages.includes(item);
-          return (
-            <TouchableOpacity key={item} onPress={() => toggleLanguage(item)} style={isSelected ? s.pillModalActive : s.pillModalIdle}>
-              <Text style={isSelected ? s.pillModalActiveText : s.pillModalIdleText}>{item}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </ScrollView>
-  </View>
-</Modal>
+      {/* ── LANGUAGES MODAL ── */}
+      <Modal visible={languageModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setLanguageModalVisible(false); setLanguageSearch(''); }}>
+        <View style={[s.modalRoot, { paddingTop: Platform.OS === 'ios' ? 20 : insets.top }]}>
+          <View style={s.modalHeader}>
+            <TouchableOpacity onPress={() => { setLanguageModalVisible(false); setLanguageSearch(''); }}><Text style={s.modalActionText}>Close</Text></TouchableOpacity>
+            <Text style={s.modalTitle}>Languages I Speak</Text>
+            <View style={{ width: 50 }} />
+          </View>
+          <View style={s.searchInputContainer}>
+            <Ionicons name="search" size={18} color={C.textLight} />
+            <TextInput
+              style={s.searchInput}
+              placeholder="Search languages..."
+              placeholderTextColor={C.textLight}
+              value={languageSearch}
+              onChangeText={setLanguageSearch}
+            />
+            {languageSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setLanguageSearch('')}>
+                <Ionicons name="close-circle" size={18} color={C.textLight} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+            <View style={s.pillsWrap}>
+              {AVAILABLE_LANGUAGES
+                .filter(lang => lang.toLowerCase().includes(languageSearch.toLowerCase()))
+                .map(item => {
+                  const isSelected = languages.includes(item);
+                  return (
+                    <TouchableOpacity key={item} onPress={() => toggleLanguage(item)} style={isSelected ? s.pillModalActive : s.pillModalIdle}>
+                      <Text style={isSelected ? s.pillModalActiveText : s.pillModalIdleText}>{item}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* ── PROMPT (MANAGE QUESTIONS) ── */}
       <Modal visible={promptManagerVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPromptManagerVisible(false)}>
         <View style={[s.modalRoot, { paddingTop: Platform.OS === 'ios' ? 20 : insets.top }]}>
           <View style={s.modalHeader}>
             <TouchableOpacity onPress={() => setPromptManagerVisible(false)}>
-               <Ionicons name="chevron-down" size={28} color={C.textMain} style={{marginLeft: -8}}/>
+              <Ionicons name="chevron-down" size={28} color={C.textMain} style={{ marginLeft: -8 }} />
             </TouchableOpacity>
             <Text style={s.modalTitle}>Manage Questions</Text>
-            <View style={{width: 40}} />
+            <View style={{ width: 40 }} />
           </View>
 
           <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
@@ -768,7 +779,7 @@ export default function EditProfileScreen() {
                   <View key={slotIndex} style={s.promptSlotFilled}>
                     <View style={s.promptSlotHeader}>
                       <Text style={s.promptQuestion}>{p.question}</Text>
-                      <TouchableOpacity style={s.promptSlotDeleteBtn} onPress={() => removePrompt(slotIndex)} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+                      <TouchableOpacity style={s.promptSlotDeleteBtn} onPress={() => removePrompt(slotIndex)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Ionicons name="trash-outline" size={16} color={C.textLight} />
                       </TouchableOpacity>
                     </View>
@@ -780,7 +791,7 @@ export default function EditProfileScreen() {
               } else {
                 return (
                   <TouchableOpacity key={slotIndex} style={s.promptSlotEmpty} onPress={() => startEditingPrompt(slotIndex)}>
-                    <Ionicons name="add-circle-outline" size={24} color={C.primary} style={{marginBottom: 8}}/>
+                    <Ionicons name="add-circle-outline" size={24} color={C.primary} style={{ marginBottom: 8 }} />
                     <Text style={s.promptSlotEmptyText}>Select a Question</Text>
                   </TouchableOpacity>
                 );
@@ -798,7 +809,7 @@ export default function EditProfileScreen() {
               <Text style={s.modalActionText}>Cancel</Text>
             </TouchableOpacity>
             <Text style={s.modalTitle}>{draftQuestion ? 'Answer' : 'Select Question'}</Text>
-            <View style={{width: 40}} />
+            <View style={{ width: 40 }} />
           </View>
 
           <ScrollView style={{ padding: 16 }}>
@@ -817,10 +828,10 @@ export default function EditProfileScreen() {
                 />
               </View>
             ) : (
-              <View style={{gap: 12}}>
+              <View style={{ gap: 12 }}>
                 {PROMPT_QUESTIONS.map((q, i) => {
                   const isUsed = prompts.some(p => p.question === q);
-                  if (isUsed && (activePromptIndex === null || prompts[activePromptIndex]?.question !== q)) return null; 
+                  if (isUsed && (activePromptIndex === null || prompts[activePromptIndex]?.question !== q)) return null;
                   return (
                     <TouchableOpacity key={i} style={s.promptListCard} onPress={() => { setDraftQuestion(q); setDraftAnswer(''); }}>
                       <Text style={s.promptListText}>{q}</Text>
@@ -842,8 +853,7 @@ export default function EditProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      </View>
-    </EdgeToEdgeLayout>
+    </View>
   );
 }
 
@@ -853,8 +863,8 @@ const PhotoSlot = ({ uri, index, onToggle, isMain = false }: { uri: string | nul
     return (
       <View style={s.photoFilled}>
         <Image source={{ uri }} style={s.photoImg} />
-        <TouchableOpacity style={s.photoDelete} onPress={onToggle} hitSlop={{top: 6, bottom: 6, left: 6, right: 6}}>
-           <Ionicons name={isMain ? "repeat-outline" : "close"} size={14} color="#FFF" />
+        <TouchableOpacity style={s.photoDelete} onPress={onToggle} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <Ionicons name={isMain ? "repeat-outline" : "close"} size={14} color="#FFF" />
         </TouchableOpacity>
         {isMain && <View style={s.photoMainBadge}><Text style={s.photoMainBadgeTxt}>Main Profile</Text></View>}
       </View>
@@ -871,21 +881,21 @@ const PhotoSlot = ({ uri, index, onToggle, isMain = false }: { uri: string | nul
 
 // ─── Styles (Bumble Soft UI Applied) ─────────────────────────────────────────
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.sand }, 
+  screen: { flex: 1, backgroundColor: C.sand },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.borderLight, zIndex: 10 },
   headerBtn: { width: 60, alignItems: 'flex-start' },
-  headerTitle: { fontFamily: QS_BOLD, fontSize: 17, fontWeight: '700', color: '#000000' },
+  headerTitle: { fontFamily: QS_BOLD, fontSize: 17, color: '#000000' },
   headerSpacer: { width: 60 },
 
   content: { padding: 16, gap: 22 },
   section: { gap: 9 },
-  sectionLabel: { fontFamily: QS_BOLD, fontSize: 16, fontWeight: '700', color: '#000000', marginLeft: 6 },
+  sectionLabel: { fontFamily: QS_BOLD, fontSize: 16, color: '#000000', marginLeft: 6 },
 
   // 4'lü Photo Grid
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
-  photoWrapper: { width: '48%', aspectRatio: 3/4 },
+  photoWrapper: { width: '48%', aspectRatio: 3 / 4 },
   photoFilled: { flex: 1, borderRadius: 16, overflow: 'hidden', backgroundColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 },
   photoEmpty: { flex: 1, borderRadius: 16, backgroundColor: C.bg, borderWidth: 2, borderStyle: 'dashed', borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
   photoImg: { width: '100%', height: '100%', resizeMode: 'cover' },
@@ -893,7 +903,7 @@ const s = StyleSheet.create({
   photoDelete: { position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
   photoEditBadge: { position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4 },
   photoMainBadge: { position: 'absolute', bottom: 10, left: 10, backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  photoMainBadgeTxt: { fontFamily: QS_BOLD, fontSize: 10, fontWeight: '800', color: C.primary },
+  photoMainBadgeTxt: { fontFamily: QS_BOLD, fontSize: 10, color: C.primary },
 
   // Cards & Rows (Soft UI - No Borders)
   cardGroup: { backgroundColor: C.bg, borderRadius: 18, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 },
@@ -916,7 +926,7 @@ const s = StyleSheet.create({
   // Pills (Interests & Languages)
   interestsCard: { backgroundColor: C.bg, borderRadius: 18, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 },
   pillsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  pillActive: { backgroundColor: '#F1F5F9', paddingHorizontal: 13, paddingVertical: 9, borderRadius: 20 },
+  pillActive: { backgroundColor: '#F1F5F9', paddingHorizontal: 13, paddingVertical: 9, borderRadius: 20, flexDirection: 'row', alignItems: 'center' },
   pillActiveText: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#000000' },
   editTagsBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-end', marginTop: 10, paddingVertical: 5, paddingHorizontal: 9 },
   editTagsBtnText: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#111111' },
@@ -925,62 +935,112 @@ const s = StyleSheet.create({
   promptsCard: { backgroundColor: C.bg, borderRadius: 18, padding: 16, gap: 9, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 },
   promptDescText: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#111111', lineHeight: 21 },
   promptCardMini: { backgroundColor: C.sand, borderRadius: 12, padding: 13 },
-  promptQuestionMini: { fontFamily: QS_BOLD, fontSize: 12, fontWeight: '700', color: C.primary, textTransform: 'uppercase', marginBottom: 7 },
+  promptQuestionMini: { fontFamily: QS_BOLD, fontSize: 12, color: C.primary, textTransform: 'uppercase', marginBottom: 7 },
   promptAnswerMini: { fontFamily: QS_MEDIUM, fontSize: 15, color: '#111111', lineHeight: 22 },
   promptManageBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 11 },
   promptManageBtnText: { fontFamily: QS_MEDIUM, fontSize: 15, color: '#111111' },
 
   // ── Height Modal Styles ──
   heightTitleWrap: { paddingHorizontal: 26, marginTop: 30, marginBottom: 26 },
-  heightMainTitle: { fontFamily: QS_BOLD, fontSize: 27, fontWeight: '800', color: '#000000', marginBottom: 7 },
+  heightMainTitle: { fontFamily: QS_BOLD, fontSize: 27, color: '#000000', marginBottom: 7 },
   heightSubTitle: { fontFamily: QS_MEDIUM, fontSize: 16, color: '#64748B' },
 
-  wheelOuter: { height: PICKER_H, overflow: 'hidden', position: 'relative' },
-  wheelHighlight: {
-    position: 'absolute', left: '12%', right: '12%',
-    top: ITEM_H * 2, height: ITEM_H,
-    backgroundColor: '#F1F5F9', borderRadius: 18,
-    zIndex: 0,
+  heightPickerWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
-  wheelItem: { height: ITEM_H, justifyContent: 'center', alignItems: 'center', width: '100%' },
-  wheelItemText: { fontFamily: QS_BOLD, fontSize: 23, color: '#000000', fontWeight: '700' },
+  wheelPicker: {
+    width: '100%',
+  },
+  wheelItemText: {
+    color: '#000000',
+    fontFamily: QS_BOLD,
+    fontSize: 20,
+  },
+  wheelOverlayItem: {
+    borderRadius: 16,
+    backgroundColor: 'rgba(166, 63, 79, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(166, 63, 79, 0.15)',
+  },
+  wheelSelectorContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  wheelSelector: {
+    height: 64,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    borderColor: 'rgba(166, 63, 79, 0.3)',
+    backgroundColor: 'rgba(166, 63, 79, 0.02)',
+  },
 
-  toggleContainer: { alignItems: 'center', marginTop: 35, marginBottom: 35 },
-  toggleBg: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 30, padding: 5 },
-  toggleBtn: { paddingVertical: 11, paddingHorizontal: 38, borderRadius: 26 },
-  toggleBtnActive: { backgroundColor: C.primary, shadowColor: C.primary, shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  toggleBtnText: { fontFamily: QS_BOLD, fontSize: 16, color: '#64748B' },
-  toggleBtnTextActive: { color: '#FFFFFF' },
-
-  // Bottom Sheet
-  bottomSheet: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: C.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 16, maxHeight: '60%', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20 },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0', alignSelf: 'center', marginBottom: 22 },
-  sheetTitle: { fontFamily: QS_BOLD, fontSize: 19, fontWeight: '800', color: '#000000', paddingHorizontal: 26, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: C.borderLight, marginBottom: 10 },
-  sheetOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 15, paddingHorizontal: 26 },
-  sheetOptionText: { fontFamily: QS_MEDIUM, fontSize: 16, color: '#000000' },
-  sheetOptionTextActive: { color: C.primary, fontFamily: QS_BOLD },
+  // Bottom Sheet Custom Styles
+  sheetTitleText: {
+    fontFamily: QS_BOLD,
+    fontSize: 17,
+    color: '#000000',
+    marginBottom: 18,
+    textAlign: 'center',
+  },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  optionCardActive: {
+    backgroundColor: '#FFF4F5',
+    borderColor: C.primary,
+  },
+  optionCardText: {
+    fontFamily: QS_MEDIUM,
+    fontSize: 15,
+    color: '#1C1714',
+  },
+  optionCardTextActive: {
+    fontFamily: QS_BOLD,
+    color: C.primary,
+  },
+  optionCircleEmpty: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    backgroundColor: 'transparent',
+  },
 
   // Generic Modal Shared
   modalRoot: { flex: 1, backgroundColor: C.sand },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingBottom: 18, backgroundColor: C.bg, borderBottomWidth: 1, borderColor: C.borderLight },
-  modalActionText: { fontFamily: QS_BOLD, fontSize: 16, color: '#111111', fontWeight: '600' },
-  modalTitle: { fontFamily: QS_BOLD, fontSize: 17, fontWeight: '800', color: '#000000' },
+  modalActionText: { fontFamily: QS_BOLD, fontSize: 16, color: '#111111' },
+  modalTitle: { fontFamily: QS_BOLD, fontSize: 17, color: '#000000' },
 
   // Search Input
   searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.bg, marginHorizontal: 20, marginTop: 12, marginBottom: 8, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 14, gap: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   searchInput: { flex: 1, fontFamily: QS_MEDIUM, fontSize: 15, color: '#000000', padding: 0 },
-  
+
   // Modal Interests
-  interestCatTitle: { fontFamily: QS_BOLD, fontSize: 13, fontWeight: '800', color: '#111111', marginBottom: 13, textTransform: 'uppercase', letterSpacing: 1 },
+  interestCatTitle: { fontFamily: QS_BOLD, fontSize: 13, color: '#111111', marginBottom: 13, textTransform: 'uppercase', letterSpacing: 1 },
   pillModalIdle: { backgroundColor: C.bg, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 },
   pillModalIdleText: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#111111' },
-  pillModalActive: { backgroundColor: C.primary, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 20, shadowColor: C.primary, shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: {width:0, height:2} },
+  pillModalActive: { backgroundColor: C.primary, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 20, shadowColor: C.primary, shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   pillModalActiveText: { fontFamily: QS_MEDIUM, fontSize: 14, color: '#FFF' },
 
   // Fixed Bottom Bar (Save Buttons)
   fixedBottomBar: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: C.bg, paddingHorizontal: 22, paddingTop: 18, borderTopWidth: 1, borderColor: C.borderLight },
   saveBtnBig: { backgroundColor: C.primary, borderRadius: 16, paddingVertical: 18, alignItems: 'center', shadowColor: C.primary, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 },
-  saveBtnBigText: { fontFamily: QS_BOLD, fontSize: 17, fontWeight: '800', color: '#FFF' },
+  saveBtnBigText: { fontFamily: QS_BOLD, fontSize: 17, color: '#FFF' },
 
   // Text Edit Modal
   textEditDesc: { fontFamily: QS_MEDIUM, fontSize: 16, color: '#111111', marginBottom: 22, lineHeight: 24 },
@@ -992,16 +1052,16 @@ const s = StyleSheet.create({
   // Prompt Slots (Manager Modal)
   promptSlotFilled: { backgroundColor: C.bg, borderRadius: 18, padding: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 },
   promptSlotHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 11 },
-  promptQuestion: { fontFamily: QS_BOLD, fontSize: 12, fontWeight: '800', color: C.primary, flex: 1, paddingRight: 9, textTransform: 'uppercase', letterSpacing: 0.5 },
+  promptQuestion: { fontFamily: QS_BOLD, fontSize: 12, color: C.primary, flex: 1, paddingRight: 9, textTransform: 'uppercase', letterSpacing: 0.5 },
   promptAnswer: { fontFamily: QS_MEDIUM, fontSize: 18, color: '#000000', lineHeight: 27 },
   promptSlotDeleteBtn: { padding: 4 },
   promptSlotEmpty: { backgroundColor: C.bg, borderRadius: 20, paddingVertical: 35, borderWidth: 2, borderColor: C.borderLight, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
-  promptSlotEmptyText: { fontFamily: QS_BOLD, fontSize: 16, fontWeight: '700', color: '#111111' },
+  promptSlotEmptyText: { fontFamily: QS_BOLD, fontSize: 16, color: '#111111' },
 
   // Prompt Answer Mode
   promptListCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: C.bg, padding: 20, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 },
   promptListText: { fontFamily: QS_BOLD, fontSize: 15, fontWeight: '600', color: '#000000', flex: 1, paddingRight: 11 },
   promptAnswerContainer: { backgroundColor: C.bg, padding: 22, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 },
-  promptAnswerTitle: { fontFamily: QS_BOLD, fontSize: 15, fontWeight: '800', color: C.primary, marginBottom: 18, lineHeight: 21 },
+  promptAnswerTitle: { fontFamily: QS_BOLD, fontSize: 15, color: C.primary, marginBottom: 18, lineHeight: 21 },
   promptAnswerInput: { fontFamily: QS_MEDIUM, fontSize: 19, color: '#000000', minHeight: 130, textAlignVertical: 'top', lineHeight: 29 },
 });
